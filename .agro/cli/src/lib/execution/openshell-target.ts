@@ -20,6 +20,7 @@ export const OPENSHELL_POLICY_FILE = "openshell-policy.yaml";
 export const OPENSHELL_MAIN = "/usr/local/bin/openshell-main.sh";
 export const OPENSHELL_WORKDIR = "/home/sandbox/harness";
 export const OPENSHELL_USER = "sandbox";
+export const OPENSHELL_HOME = "/home/sandbox";
 export const OPENSHELL_PINNED_VERSION = "v0.1.2";
 export const OPENSHELL_LOCAL_GATEWAY = "https://127.0.0.1:17670";
 
@@ -77,6 +78,8 @@ export function createArgv(opts: OpenShellCreateOptions): string[] {
     `${EXECUTION_TARGET_ENV}=local`,
     "--env",
     `SANDBOX_NAME=${opts.name}`,
+    "--env",
+    `HOME=${OPENSHELL_HOME}`,
     "--detach",
     "--",
     OPENSHELL_MAIN,

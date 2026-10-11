@@ -72,6 +72,8 @@ describe("pure argv builders", () => {
       "AGRO_EXECUTION_TARGET=local",
       "--env",
       "SANDBOX_NAME=box",
+      "--env",
+      "HOME=/home/sandbox",
       "--detach",
       "--",
       "/usr/local/bin/openshell-main.sh",

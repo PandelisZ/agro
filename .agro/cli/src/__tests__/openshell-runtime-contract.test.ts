@@ -51,6 +51,20 @@ describe("the openshell runtime contract", () => {
     expect(assetCopies.some((line) => line.split(/\s+/).includes(POLICY_PATH))).toBe(true);
   });
 
+  it("derives the workload environment from the image ENV at build time", () => {
+    const lines = read(".devcontainer/Dockerfile").split("\n");
+    const lastEnv = lines.map((line, i) => (line.startsWith("ENV ") ? i : -1)).reduce((a, b) => Math.max(a, b));
+    const generate = lines.findIndex((line) => /\benv \|.*> \/etc\/agro\/image-environment/.test(line));
+    expect(generate).toBeGreaterThan(lastEnv);
+    expect(lines).toContain("COPY .devcontainer/agro-image-env.sh /etc/profile.d/agro-image-env.sh");
+    expect(read(".devcontainer/agro-image-env.sh")).toContain('[ -n "${OPENSHELL_SANDBOX:-}" ]');
+    const main = read(".devcontainer/openshell-main.sh").split("\n");
+    expect(main.indexOf(". /etc/profile.d/agro-image-env.sh")).toBeGreaterThan(0);
+    expect(main.indexOf(". /etc/profile.d/agro-image-env.sh")).toBeLessThan(
+      main.findIndex((line) => line.startsWith("/usr/local/bin/entrypoint.sh")),
+    );
+  });
+
   it("keeps the runtime page and links it from the runtime overview and the lifecycle reference", () => {
     const page = read("docs/runtimes/openshell.md");
     for (const fragment of ["Experimental.", "interactive-only", "Claude Code only", POLICY_PATH, "## Out of scope in v1"]) {

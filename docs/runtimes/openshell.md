@@ -71,7 +71,7 @@ entry:
 
 ```text
 $ agro sandbox install openshell --name os-demo --print-argv
-openshell sandbox create --name os-demo --from ghcr.io/mifunedev/agro:0.15.0 --policy /home/<user>/.agro/sandboxes/os-demo/openshell-policy.yaml --env AGRO_EXECUTION_TARGET=local --env SANDBOX_NAME=os-demo --detach -- /usr/local/bin/openshell-main.sh
+openshell sandbox create --name os-demo --from ghcr.io/mifunedev/agro:0.15.0 --policy /home/<user>/.agro/sandboxes/os-demo/openshell-policy.yaml --env AGRO_EXECUTION_TARGET=local --env SANDBOX_NAME=os-demo --env HOME=/home/sandbox --detach -- /usr/local/bin/openshell-main.sh
 ```
 
 A successful run writes `agro.json` with `runtime: "openshell"` and
@@ -175,6 +175,10 @@ The Claude Code sign-in can need more hosts than `api.anthropic.com`. The list
 of `<claude login hosts>` waits for a live observation. If the sign-in fails on
 a denied host, add the host to the `anthropic` rule in the live policy.
 
+The policy denies Claude Code telemetry to `http-intake.logs.us5.datadoghq.com`.
+`openshell logs <name>` then shows a `NET:OPEN DENIED` line for that host. This
+denial does not stop Claude Code. Expect this line.
+
 Network rules reload while the sandbox runs. Filesystem and process fields apply
 only when OpenShell creates the sandbox. To change the live network policy, run
 this command on the host:
@@ -193,6 +197,11 @@ openshell policy set <name> --policy <file> --wait
 4. `openshell-main.sh` then runs `exec sleep infinity`.
 
 No systemd runs in an OpenShell sandbox, and no cron runtime runs in v1.
+
+OpenShell gives each `openshell sandbox exec` session a clean environment and
+runs the command in a `bash` login shell. The CLI sets `HOME=/home/sandbox` at
+create, and `/etc/profile.d/agro-image-env.sh` exports the image `ENV` values
+from `/etc/agro/image-environment`, so login shells get the image `PATH`.
 
 > **Warning.** A gateway restart or a host reboot stops every process in the
 > sandbox. `openshell sandbox start <name>` starts a new main process in the

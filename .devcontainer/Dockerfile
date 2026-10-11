@@ -141,6 +141,7 @@ COPY --chown=sandbox:sandbox . /opt/agro-seed/
 
 COPY .devcontainer/entrypoint.sh .devcontainer/openshell-main.sh /usr/local/bin/
 RUN chmod 0755 /usr/local/bin/entrypoint.sh /usr/local/bin/openshell-main.sh
+COPY .devcontainer/agro-image-env.sh /etc/profile.d/agro-image-env.sh
 
 COPY .devcontainer/agro-bootstrap.service .devcontainer/agro-cron.service /usr/lib/systemd/system/
 COPY .devcontainer/agro-env-generator.sh /usr/lib/systemd/system-environment-generators/10-agro
@@ -148,7 +149,9 @@ RUN chmod 0755 /usr/lib/systemd/system-environment-generators/10-agro \
  && systemctl enable agro-bootstrap.service agro-cron.service \
  && systemctl mask cron.service ssh.service ssh.socket \
  && install -d -m 0755 /etc/agro \
- && install -m 0644 /dev/null /etc/agro/sandbox
+ && install -m 0644 /dev/null /etc/agro/sandbox \
+ && env | grep -vE '^(HOME|HOSTNAME|PWD|OLDPWD|SHLVL|_)=' | LC_ALL=C sort > /etc/agro/image-environment \
+ && chmod 0644 /etc/agro/image-environment /etc/profile.d/agro-image-env.sh
 
 COPY --from=home --chown=sandbox:sandbox /home/sandbox /opt/home-seed
 RUN rm -rf /opt/home-seed/harness /home/sandbox \
