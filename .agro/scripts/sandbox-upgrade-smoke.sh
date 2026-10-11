@@ -19,14 +19,6 @@
 # logs one HARNESS <id> exit=<n> line per harness and fails if any exit is
 # nonzero. `agro harness install <id>` repairs a failed harness.
 #
-# The copied package.json may carry a "pnpm:devPreinstall" security-audit hook
-# whose pinned advisory turns `pnpm install` into a permanent failure on a
-# dated manifest. Setting build.skipPnpmInstall would dodge that but also skip
-# installing node_modules entirely, which starves agro-cron.service of the
-# real dependencies (e.g. croner) it needs to start — so instead this script
-# deletes just that one lifecycle script before the boot. The rest of
-# `pnpm install` still runs for real.
-#
 # Scope: this proves the freshly built image correctly upgrades a genuine
 # pre-existing workspace volume. The legacy `.oh` layout is retired
 # (https://github.com/mifunedev/agro/issues/1061) and is no longer exercised here.
@@ -84,7 +76,7 @@ diagnostics() {
     echo "--- container state ($cid)"
     docker inspect --format '{{.State.Status}} exit={{.State.ExitCode}} health={{if .State.Health}}{{.State.Health.Status}}{{else}}none{{end}}' "$cid" || true
     echo "--- systemd units ($cid)"
-    docker exec "$cid" systemctl status agro-bootstrap.service agro-cron.service --no-pager || true
+    docker exec "$cid" systemctl status agro-bootstrap.service --no-pager || true
     echo "--- container logs tail ($cid)"
     docker logs --tail 200 "$cid" 2>&1 || true
   fi
@@ -123,7 +115,7 @@ READY_CID=""
 wait_ready() {
   local label="$1" end cid state
   end=$(( $(date +%s) + TIMEOUT ))
-  log "waiting up to ${TIMEOUT}s for $label: systemd units agro-bootstrap.service and agro-cron.service"
+  log "waiting up to ${TIMEOUT}s for $label: systemd unit agro-bootstrap.service"
   while [ "$(date +%s)" -le "$end" ]; do
     cid=$(container_id)
     if [ -n "$cid" ]; then
@@ -134,9 +126,8 @@ wait_ready() {
       if docker exec "$cid" systemctl is-failed --quiet agro-bootstrap.service 2>/dev/null; then
         fail "$label: agro-bootstrap.service failed"
       fi
-      if docker exec "$cid" systemctl is-active --quiet agro-bootstrap.service 2>/dev/null \
-        && docker exec "$cid" systemctl is-active --quiet agro-cron.service 2>/dev/null; then
-        log "$label ready: container $cid, bootstrap oneshot succeeded, cron runtime active"
+      if docker exec "$cid" systemctl is-active --quiet agro-bootstrap.service 2>/dev/null; then
+        log "$label ready: container $cid, bootstrap oneshot succeeded"
         READY_CID="$cid"
         return 0
       fi
@@ -189,9 +180,6 @@ set -eu
 mkdir -p /home/sandbox/harness
 cp -a /opt/agro-seed/. /home/sandbox/harness/
 : > /home/sandbox/harness/.agro/.image-seeded
-tmp_pkg_json=\$(mktemp)
-jq 'del(.scripts["pnpm:devPreinstall"])' /home/sandbox/harness/package.json > "\$tmp_pkg_json"
-mv "\$tmp_pkg_json" /home/sandbox/harness/package.json
 mkdir -p /home/sandbox/.config/gh
 cat > /home/sandbox/.config/gh/hosts.yml <<'HOSTS'
 github.com:
@@ -317,7 +305,6 @@ if printf '%s\n' "$bootstrap_log" | grep -q "seeded control plane into"; then
   fail "the upgraded entrypoint re-seeded the workspace over the existing .agro/ control plane"
 fi
 docker exec "$new_cid" systemctl is-active --quiet agro-bootstrap.service || fail "agro-bootstrap.service is not active after the upgrade"
-docker exec "$new_cid" systemctl is-active --quiet agro-cron.service || fail "agro-cron.service is not active after the upgrade"
 log "compose health after upgrade: $(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' "$new_cid" 2>/dev/null || echo inspect-failed)"
 
 log "npm harnesses after upgrade on $IMAGE's node $(docker exec -u sandbox "$new_cid" node --version)"

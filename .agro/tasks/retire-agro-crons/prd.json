@@ -1,0 +1,231 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1391-retire-agro-crons",
+  "description": "Retire the AGRO cron runtime, its systemd unit, config, crons/ scaffold, and the boot-time root pnpm install it required. Recurring agent work moves to native harness loops.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Remove cron references from public docs and add the changelog entry",
+      "description": "As an operator, I want docs that describe native harness loops instead of AGRO crons so that the docs match the sandbox.",
+      "acceptanceCriteria": [
+        "`docs/intro.md` has no \"Markdown crons\" bullet and no `cron-runtime.ts` paragraph. One sentence points recurring work to the native loop of the coding harness, for example Claude Code `/loop`.",
+        "`docs/configuration.md` has no \"Cron runtime\" section and no `cron.agentBin` row. The `timezone` row does not name cron schedules. The retired-key row for `CRONS_DIR` stays.",
+        "`docs/lifecycle-commands.md`, `docs/installation.md`, and `docs/agro-directory-layout.md` do not name `crons/` or `agro-cron.service`.",
+        "`docs/deployment-prebuilt-image.md`, `docs/integrations/langfuse.md`, `docs/integrations/sshd.md`, `docs/integrations/herdr.md`, `docs/harnesses/overview.md`, `docs/harnesses/claude-code.md`, `docs/harnesses/codex.md`, and `docs/harnesses/antigravity-cli.md` do not name `agro-cron.service`, `cron-runtime.ts`, the cron runtime, or detached cron fires.",
+        "`.github/ISSUE_TEMPLATE/bug.md` does not list cron as a runtime or workflow hint.",
+        "`CHANGELOG.md` has one `**BREAKING:**` bullet under `### Removed` in `## [Unreleased]`. The bullet names `agro-cron.service`, `cron-runtime.ts`, `crons/`, `cron.agentBin`, the `croner` dependency, the boot-time root `pnpm install`, and `build.skipPnpmInstall`. The bullet names native harness loops as the replacement.",
+        "`pnpm test:scripts -- .agro/cli/src/__tests__/docs-reference.test.ts` exits 0."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "1-5 executed: git grep -n -i -E 'agro-cron|cron-runtime|crons/|cron\\.agentBin|cron runtime|Markdown crons' -- docs .github/ISSUE_TEMPLATE exit 1 (no hits); intro.md points to Claude Code /loop. 6 executed: grep -c BREAKING cron bullet in CHANGELOG.md = 1 under [Unreleased] ### Removed. 7 executed: npx vitest run .agro/cli/src/__tests__/docs-reference.test.ts exit 0 (4 passed). Worker also updated docs/runtimes/openshell.md (in owned docs/ path).",
+      "dependsOn": [],
+      "files": [
+        "docs/",
+        "CHANGELOG.md",
+        ".github/ISSUE_TEMPLATE/bug.md"
+      ],
+      "commit": "65431232"
+    },
+    {
+      "id": "US-002",
+      "title": "Remove cron guidance from skills and context files",
+      "description": "As an agent, I want skills and `AGENTS.md` files without cron runtime references so that agents do not look for a missing scheduler.",
+      "acceptanceCriteria": [
+        "Root `AGENTS.md` states that systemd supervises only the bootstrap oneshot, and that named tmux sessions hold gateways and tunnels. The file does not name the cron runtime or detached cron fires.",
+        "`.agro/tasks/AGENTS.md` does not name the `cleanup-tasks` cron. The file states that the operator or a harness loop archives completed tasks to `.agro/tasks/archive/`.",
+        "`.agro/logs/AGENTS.md` does not give the `/tmp/cron-*.log` example.",
+        "`.agro/skills/audit/` has no cron-staleness trigger, no \"(C) Host/state drift\" section, no `crons/.cron.log` inputs, and no cron health or cron reliability check. `drift.md` describes two drift classes.",
+        "`.agro/skills/escalate/SKILL.md`, `herdr/SKILL.md`, `git/SKILL.md`, `worktrees/SKILL.md`, and `t3/references/sandbox-processes.md` do not name `agro-cron.service`, `cron-runtime.ts`, or agent-driven crons.",
+        "`.agro/skills/prompt-miner/SKILL.md` does not name `crons/prompt-miner.md`. The `cron` session-type classifier in `mine-traces.mjs` stays unchanged.",
+        "`.agro/skills/ste/references/rules.md` does not cite `crons/heartbeat.md`.",
+        "`bash .agro/scripts/link-providers.sh --check` exits 0."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "1-7 executed: git grep -n -i -E 'agro-cron|cron-runtime|crons/|cron runtime|cron fires|cleanup-tasks|cron.staleness' over owned paths exit 1 (no hits); diff review of AGENTS.md, tasks/AGENTS.md, git/SKILL.md, ste rules.md. 6 executed: git diff --quiet on prompt-miner/scripts exit 0 (classifier unchanged). 8 executed: link-providers.sh --check exit 0. Extra: vitest herdr-default + standard-skills-link 48 passed. audit skills.md Usage score now counts tracked references outside the skill dir.",
+      "dependsOn": [],
+      "files": [
+        "AGENTS.md",
+        ".agro/tasks/AGENTS.md",
+        ".agro/logs/AGENTS.md",
+        ".agro/skills/audit/",
+        ".agro/skills/escalate/SKILL.md",
+        ".agro/skills/herdr/SKILL.md",
+        ".agro/skills/git/SKILL.md",
+        ".agro/skills/worktrees/SKILL.md",
+        ".agro/skills/t3/references/sandbox-processes.md",
+        ".agro/skills/prompt-miner/SKILL.md",
+        ".agro/skills/ste/references/rules.md"
+      ],
+      "commit": "f79eb3a4"
+    },
+    {
+      "id": "US-003",
+      "title": "Delete the cron runtime and its sandbox wiring",
+      "description": "As a maintainer, I want the cron runtime, its systemd unit, and its dependency deleted so that the sandbox runs one less supervised process.",
+      "acceptanceCriteria": [
+        "`.agro/scripts/cron-runtime.ts`, `.agro/scripts/__tests__/cron-runtime.test.ts`, and `.devcontainer/agro-cron.service` do not exist.",
+        "`.devcontainer/Dockerfile` does not install the `cron` apt package, does not copy or enable `agro-cron.service`, and does not mask `cron.service`. The ssh masks stay.",
+        "`.devcontainer/agro-bootstrap.service` has no `Before=agro-cron.service` line.",
+        "`.devcontainer/entrypoint.sh` does not define `CRONS_PATH` and does not create `crons/`.",
+        "`package.json` has no `croner` dependency, and `pnpm install --frozen-lockfile` exits 0 with the regenerated `pnpm-lock.yaml`.",
+        "`.agro/scripts/agro-path` has no `crons)` case. `.agro/scripts/README.md` does not list `cron-runtime.ts`.",
+        "`.agro/scripts/__tests__/entrypoint.test.ts` has no test that reads `agro-cron.service`. The bootstrap-oneshot test stays.",
+        "`.claude/protected-paths.txt` does not list `.agro/scripts/cron-runtime.ts`.",
+        "hadolint with `.hadolint.yaml` exits 0 on `.devcontainer/Dockerfile`."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "1-4,6-8 executed: git grep -n -E 'cron-runtime|agro-cron|croner|CRONS_PATH' over .devcontainer, agro-path, scripts README, package.json, pnpm-lock.yaml exit 1; diff reviewed (ssh masks kept, bootstrap test kept). 5 executed: pnpm install --frozen-lockfile exit 0. 9 executed: hadolint --config .hadolint.yaml (hadolint/hadolint:latest-alpine via stdin tar) exit 0. Extra: full npx vitest run 91 files, 2029 passed, 2 skipped.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/scripts/cron-runtime.ts",
+        ".agro/scripts/__tests__/cron-runtime.test.ts",
+        ".devcontainer/",
+        ".agro/scripts/agro-path",
+        ".agro/scripts/README.md",
+        ".agro/scripts/__tests__/entrypoint.test.ts",
+        "package.json",
+        "pnpm-lock.yaml",
+        ".claude/protected-paths.txt"
+      ],
+      "commit": "d02a0ebb"
+    },
+    {
+      "id": "US-004",
+      "title": "Remove cron checks from health, smoke, and matrix scripts",
+      "description": "As a maintainer, I want the healthcheck and smoke scripts to stop requiring `agro-cron.service` so that a healthy sandbox without cron passes every check.",
+      "acceptanceCriteria": [
+        "`.agro/scripts/sandbox-healthcheck.sh` requires only `agro-bootstrap.service` among AGRO units.",
+        "`.agro/scripts/sandbox-boot-smoke.sh` `verify_systemd_supervision()` keeps the PID 1 and bootstrap checks and has no cron unit, PID file, reload, or kill-recovery check.",
+        "`.agro/scripts/sandbox-upgrade-smoke.sh` and `.agro/scripts/cli-first-install-smoke.sh` do not wait for or assert `agro-cron.service`.",
+        "`.agro/install/banner.sh` recovery lines do not name `agro-cron.service`.",
+        "`.agro/skills/remote-sandbox/checks/agro-rows.sh` R06 and R07, `scripts/restart-test.sh`, and the R06 and R07 rows in `references/rationale.md` use `agro-bootstrap` instead of `agro-cron`.",
+        "The tests `sandbox-healthcheck.test.ts`, `sandbox-boot-smoke.test.ts`, `sandbox-upgrade-smoke.test.ts`, and `boot-banner.test.ts` have no cron fixture or cron assertion, and they pass.",
+        "The CI shellcheck command exits 0."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "1-5 executed: git grep -n -i agro-cron over owned scripts/tests/remote-sandbox exit 1; diff reviewed (PID1+bootstrap checks kept, R06/R07 use agro-bootstrap). 6 executed: npx vitest run 5 smoke/health/banner test files exit 0 (58 passed). 7 executed: shellcheck v0.10.0 -S warning CI set exit 0. Note: worker reran a hook-blocked heredoc via a script file; flagged to operator.",
+      "dependsOn": [],
+      "files": [
+        ".agro/scripts/sandbox-healthcheck.sh",
+        ".agro/scripts/sandbox-boot-smoke.sh",
+        ".agro/scripts/sandbox-upgrade-smoke.sh",
+        ".agro/scripts/cli-first-install-smoke.sh",
+        ".agro/install/banner.sh",
+        ".agro/skills/remote-sandbox/",
+        ".agro/scripts/__tests__/sandbox-healthcheck.test.ts",
+        ".agro/scripts/__tests__/sandbox-boot-smoke.test.ts",
+        ".agro/scripts/__tests__/sandbox-upgrade-smoke.test.ts",
+        ".agro/scripts/__tests__/boot-banner.test.ts"
+      ],
+      "commit": "3bedcf69"
+    },
+    {
+      "id": "US-005",
+      "title": "Remove the boot-time root pnpm install",
+      "description": "As an operator, I want the sandbox to boot without a root `pnpm install` so that a network or registry failure cannot stop the boot.",
+      "acceptanceCriteria": [
+        "`.devcontainer/entrypoint.sh` has no `pnpm_manifest_fingerprint` function, no `PNPM_INSTALL_*` variables, and no `pnpm install` command.",
+        "`.agro/scripts/__tests__/entrypoint-pnpm-install.test.ts` does not exist. `.agro/scripts/__tests__/entrypoint.test.ts` asserts that `entrypoint.sh` does not contain `pnpm install`.",
+        "`.agro/cli/src/lib/agro-config.ts` has no `BuildSettings`, no `build` default, no `build` validation, and no `build.skipPnpmInstall` entry in `AGRO_CONFIG_FIELDS`. `agro.json` has no `build` key.",
+        "An `agro.json` that still contains `build.skipPnpmInstall` loads without an error.",
+        "`.agro/cli/src/lib/config-render.ts` keeps `SKIP_PNPM_INSTALL` in `RETIRED_KEYS`.",
+        "`docs/configuration.md` has no `build.skipPnpmInstall` row.",
+        "`.github/workflows/sandbox-boot-guard.yml` has no step that pre-seeds `node_modules`, no step that checks `node_modules/croner`, and no step that sets `build.skipPnpmInstall`.",
+        "`.agro/scripts/sandbox-upgrade-smoke.sh` does not delete the `pnpm:devPreinstall` script and does not name `build.skipPnpmInstall` or `croner`.",
+        "`pnpm run build:harness` exits 0 in a checkout without root `node_modules`.",
+        "`pnpm test:scripts` exits 0."
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "1 executed: grep -c 'pnpm install' .devcontainer/entrypoint.sh = 0. 2,4,10 executed: full npx vitest run 90 files, 2021 passed, 2 skipped (entrypoint no-pnpm-install test, stale build key load test). 3,5,6,7,8 executed: git grep skipPnpmInstall|PNPM_INSTALL|node_modules/croner|devPreinstall shows only RETIRED_KEYS lines, negative tests, and config-render.test.ts:195 (stale fixture; US-006 tidies); workflow diff reviewed (also drops unused Set up pnpm step). 9 worker-executed: pnpm run build:harness exit 0 in fresh worktree without root node_modules; reasoned: script uses only .agro/cli npm deps. Extra: pnpm run typecheck exit 0; shellcheck CI set exit 0.",
+      "dependsOn": [
+        "US-001",
+        "US-003",
+        "US-004"
+      ],
+      "files": [
+        ".devcontainer/entrypoint.sh",
+        ".agro/scripts/__tests__/entrypoint-pnpm-install.test.ts",
+        ".agro/scripts/__tests__/entrypoint.test.ts",
+        ".agro/cli/src/lib/agro-config.ts",
+        ".agro/cli/src/lib/__tests__/agro-config.test.ts",
+        "agro.json",
+        "docs/configuration.md",
+        ".github/workflows/sandbox-boot-guard.yml",
+        ".agro/scripts/sandbox-upgrade-smoke.sh",
+        "docs/deployment-prebuilt-image.md"
+      ],
+      "commit": "3c88a5b0"
+    },
+    {
+      "id": "US-006",
+      "title": "Remove cron configuration and the crons scaffold",
+      "description": "As an operator, I want the `cron` config key and the `crons/` folder removed so that `agro vendor` and `agro.json` carry no dead cron state.",
+      "acceptanceCriteria": [
+        "The folder `crons/` does not exist in the repository.",
+        "`.agro/manifest.json` has no `crons/**` entry in `rootInclude`.",
+        "`.agro/cli/src/lib/agro-config.ts` has no `CronSettings`, no `cron` default, no `cron.agentBin` validation, and no `cron` entry in `AGRO_CONFIG_FIELDS`. `agro.json` has no `cron` key.",
+        "An `agro.json` that still contains a `cron` key loads without an error.",
+        "`.agro/cli/src/lib/config-render.ts` keeps `CRONS_DIR` and `CRON_AGENT_BIN` in `RETIRED_KEYS`.",
+        "`.agro/scripts/migrate-harness-yaml.sh` maps `crons.agent_bin` and `crons.dir` as retired keys, not to `cron.agentBin`.",
+        "`.agro/cli/src/cli.ts` help text and `.agro/cli/README.md` do not name cron or `crons/`.",
+        "`.github/workflows/ci-harness.yml` has no `crons/**` path filter. `.claude/protected-paths.txt` has no Crons section. `.gitignore` has no `crons/` entries.",
+        "`manifest.test.ts`, `vendor.test.ts`, and `docs-reference.test.ts` use neutral fixture paths instead of `crons/`. `agro-config.test.ts` has no `cron.agentBin` case.",
+        "`pnpm run typecheck` exits 0."
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "Commits d37dd581 + 7b558694 repair (registry-portability.md cron proposal). 1 executed: test -e crons exit 1. 2,3,5,7,8,9 executed: git grep -n -i -E 'agro-cron|cron-runtime|croner|crons/|cron\\.agentBin|CRONS_DIR|CRON_AGENT_BIN' shows only RETIRED_KEYS lines, docs/configuration.md retired-key line, and a negative croner assertion; diff reviewed. 4 executed: full npx vitest run 90 files, 2021 passed, 2 skipped (stale cron key load test). 6 worker-executed: migrate-harness-yaml.sh on fixture exit 0, cron keys warn as retired. 10 executed: pnpm run typecheck exit 0.",
+      "dependsOn": [
+        "US-001",
+        "US-003",
+        "US-005"
+      ],
+      "files": [
+        "crons/",
+        ".agro/manifest.json",
+        ".agro/cli/",
+        "agro.json",
+        ".agro/scripts/migrate-harness-yaml.sh",
+        ".github/workflows/ci-harness.yml",
+        ".claude/protected-paths.txt",
+        ".gitignore",
+        ".agro/scripts/registry-portability.md"
+      ],
+      "commit": "d37dd581"
+    },
+    {
+      "id": "US-007",
+      "title": "Record manual review evidence",
+      "description": "As the advisor, I want a command transcript that proves the cron removal so that the PR `## Manual review` section has evidence.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/retire-agro-crons/evidence/manual-review.md` holds the output of each command in this list, with exit codes: `git grep -n -i -E 'agro-cron|cron-runtime|croner|crons/|cron\\.agentBin' -- ':!CHANGELOG.md' ':!.agro/tasks/**'`; `pnpm test:scripts`; `pnpm run typecheck`; the CI shellcheck command; `bash .agro/scripts/link-providers.sh --check`; `git grep -n -E 'skipPnpmInstall|PNPM_INSTALL' -- ':!CHANGELOG.md' ':!.agro/tasks/**'`;",
+        "Each `git grep` output holds no line outside the retired-key lists in `config-render.ts`, `config-render.test.ts`, and `docs/configuration.md`, and outside the negative assertions in tests.",
+        "If the operator approves a sandbox rebuild, the transcript holds `agro ps <name>` and `bash .agro/scripts/sandbox-healthcheck.sh` from the rebuilt sandbox, and `systemctl list-units 'agro-*'` shows only `agro-bootstrap.service`. `journalctl -u agro-bootstrap.service` shows no `pnpm install` line.",
+        "This story depends on US-001, US-002, US-003, US-004, US-005, and US-006."
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "1 executed: evidence/manual-review.md holds every listed command with output and exit status (tests 2021 passed/2 skipped, typecheck 0, shellcheck 0, link check 0). 2 executed: cron grep has only a negative croner assertion; install grep has retired-key lines, negative assertions, and agro-config.test.ts:182-190 (the stale-key load test that US-005 criterion 4 requires; accepted, reasoned). 3 not run: operator did not approve a sandbox rebuild; commands listed under What remains unverified. 4 reasoned: base cdd2c420 holds US-001..US-006.",
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005",
+        "US-006"
+      ],
+      "files": [
+        ".agro/tasks/retire-agro-crons/evidence/manual-review.md"
+      ],
+      "commit": "0227dc65"
+    }
+  ]
+}
