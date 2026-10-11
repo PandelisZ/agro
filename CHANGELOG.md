@@ -8,6 +8,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+### Added
+- Add `access.egress: "allowlist"`, which removes the sandbox's direct route out and routes traffic through a proxy that enforces an egress allowlist (ADR #1378) ([#1397](https://github.com/mifunedev/agro/issues/1397)).
+
 ### Removed
 - Stop tracking `.hermes/` in git; the whole directory is now gitignored, and `agro harness install hermes` generates `config.yaml` with the AGRO defaults on first install ([#1401](https://github.com/mifunedev/agro/pull/1401)).
 
