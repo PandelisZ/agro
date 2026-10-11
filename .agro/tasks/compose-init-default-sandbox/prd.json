@@ -1,0 +1,255 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1393-compose-init-default-sandbox",
+  "description": "Compose init (tini) becomes the default sandbox PID 1 and the Compose files drop the systemd privileges. The image keeps systemd and CMD /sbin/init for VM image mode.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add one main script with a readiness marker",
+      "description": "As an operator, I want one sandbox main script that runs the bootstrap once and records readiness. The sandbox then boots without systemd and stays up for recovery when the bootstrap fails.",
+      "acceptanceCriteria": [
+        "`.devcontainer/sandbox-main.sh` exists. The script deletes the readiness file, runs `entrypoint.sh`, writes the readiness file when `entrypoint.sh` exits 0, prints a warning when `entrypoint.sh` exits non-zero, and then runs `exec sleep infinity`.",
+        "The readiness file path is `${AGRO_READY_FILE:-/run/agro/bootstrap.ready}`. The entrypoint path is `${AGRO_ENTRYPOINT_BIN:-/usr/local/bin/entrypoint.sh}`. A failure to write the readiness file prints a warning and does not stop the script.",
+        "`.devcontainer/openshell-main.sh` sources `/etc/profile.d/agro-image-env.sh` and then runs `exec /usr/local/bin/sandbox-main.sh`. `OPENSHELL_MAIN` in `openshell-target.ts` stays `/usr/local/bin/openshell-main.sh`.",
+        "`.devcontainer/Dockerfile` copies `sandbox-main.sh` to `/usr/local/bin/` with mode `0755`. The image keeps `CMD [\"/sbin/init\"]`, `ENTRYPOINT []`, `STOPSIGNAL SIGRTMIN+3`, `agro-bootstrap.service`, and the env generator.",
+        "A new test `.agro/scripts/__tests__/sandbox-main.test.ts` runs the script with a stub entrypoint and a stub `sleep`, and proves three cases: success writes the readiness file, failure leaves no readiness file and prints the warning, and a stale readiness file is deleted before the stub entrypoint runs.",
+        "`openshell-runtime-contract.test.ts` passes with the new `openshell-main.sh`."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "1,2 executed: diff reviewed; npx vitest run sandbox-main.test.ts (success, failure, stale marker, unwritable marker) exit 0. 3 executed: openshell-main.sh sources image env then exec sandbox-main.sh; openshell-runtime-contract + openshell-target tests pass; OPENSHELL_MAIN unchanged. 4 executed: Dockerfile diff only touches COPY/chmod lines; CMD/ENTRYPOINT/STOPSIGNAL unchanged. 5,6 executed: 3 test files 57 passed. shellcheck .devcontainer/*.sh exit 0. sandbox-main.sh mode 100755.",
+      "dependsOn": [],
+      "files": [
+        ".devcontainer/sandbox-main.sh",
+        ".devcontainer/openshell-main.sh",
+        ".devcontainer/Dockerfile",
+        ".agro/scripts/__tests__/sandbox-main.test.ts",
+        ".agro/cli/src/__tests__/openshell-runtime-contract.test.ts"
+      ],
+      "commit": "babdba02"
+    },
+    {
+      "id": "US-002",
+      "title": "Make the healthcheck aware of the PID 1 type",
+      "description": "As an operator, I want the healthcheck to judge readiness from the readiness file when PID 1 is not systemd. One healthcheck then serves the Compose sandbox and VM image mode.",
+      "acceptanceCriteria": [
+        "`.agro/scripts/sandbox-healthcheck.sh` reads the PID 1 command name from `${AGRO_PID1_COMM_FILE:-/proc/1/comm}`.",
+        "When the PID 1 command name is `systemd`, the healthcheck keeps `require_unit agro-bootstrap.service`.",
+        "When the PID 1 command name is not `systemd`, the healthcheck requires the readiness file `${AGRO_READY_FILE:-/run/agro/bootstrap.ready}` and records `bootstrap not ready: <path>` when the file is missing. The healthcheck does not call `systemctl` in this case.",
+        "`sandbox-healthcheck.test.ts` covers four cases: systemd with an active unit passes, systemd with an inactive unit fails, `docker-init` with the readiness file passes, and `docker-init` without the readiness file fails."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "1-3 executed: diff reviewed (pid1_comm from AGRO_PID1_COMM_FILE, systemd branch keeps require_unit, else require_ready_file, unreadable comm -> ready-file path). 4 executed: npx vitest run sandbox-healthcheck.test.ts 10 passed (systemctl stub not invoked in docker-init cases). shellcheck exit 0.",
+      "dependsOn": [],
+      "files": [
+        ".agro/scripts/sandbox-healthcheck.sh",
+        ".agro/scripts/__tests__/sandbox-healthcheck.test.ts"
+      ],
+      "commit": "2b276357"
+    },
+    {
+      "id": "US-003",
+      "title": "Switch both Compose base files to Compose init",
+      "description": "As an operator, I want the default sandbox to run without `SYS_ADMIN`, unconfined AppArmor, or a private cgroup. The sandbox then uses the Docker default privilege set.",
+      "acceptanceCriteria": [
+        "`.devcontainer/docker-compose.yml` and `.devcontainer/docker-compose.image-only.yml` set `init: true`, `entrypoint: [\"/usr/local/bin/sandbox-main.sh\"]`, and `stop_signal: SIGTERM`.",
+        "Neither file contains `cgroup:`, `cap_add:`, `security_opt:`, or `tmpfs:`.",
+        "`sandbox-privilege-boundary.test.ts` asserts, for every compose file: no `privileged: true`, no `devices:`, no host cgroup bind, no `cap_add:`, no `security_opt:`, and no `cgroup:`. For both base files, the test asserts `init: true`, the `sandbox-main.sh` entrypoint, and `stop_signal: SIGTERM`. The test keeps the Dockerfile assertions for `CMD [\"/sbin/init\"]` and `STOPSIGNAL SIGRTMIN+3`, and names them as the VM image mode contract.",
+        "`bash .agro/scripts/docker-compose.sh config --quiet` exits 0 on the host checkout.",
+        "Every test that reads the compose files passes."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Commits US-003 + reword repair. 1,2 executed: diff reviewed; git grep -n -E 'SYS_ADMIN|apparmor=unconfined|cgroup: private' -- .devcontainer exit 1. 3,5 executed: full npx vitest run 92 files, 2029 passed, 2 skipped (privilege-boundary 18 tests). 4 executed: bash .agro/scripts/docker-compose.sh config --quiet exit 0 (worker also with SANDBOX_SSH=true).",
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
+      "files": [
+        ".devcontainer/docker-compose.yml",
+        ".devcontainer/docker-compose.image-only.yml",
+        ".agro/scripts/__tests__/sandbox-privilege-boundary.test.ts"
+      ],
+      "commit": "037337d2"
+    },
+    {
+      "id": "US-004",
+      "title": "Make the boot, upgrade, and first-install checks aware of the PID 1 type",
+      "description": "As a maintainer, I want the CI smokes, the boot banner, and the remote-sandbox rows to accept Compose init. CI then proves the new default, and VM image mode keeps its systemd checks.",
+      "acceptanceCriteria": [
+        "`sandbox-boot-smoke.sh` requires PID 1 `docker-init` and the readiness file inside the container. The success message names Compose init.",
+        "`sandbox-upgrade-smoke.sh` waits for the readiness file instead of `agro-bootstrap.service`, and reads the bootstrap log with `docker logs` instead of `journalctl`.",
+        "`cli-first-install-smoke.sh` `verify_systemd` becomes a PID 1 check that requires `docker-init` and the readiness file. The function name states the new check.",
+        "`.agro/install/banner.sh` prints `systemctl status agro-bootstrap.service` only when PID 1 is systemd. Otherwise the banner prints `agro logs` as the recovery command for the host.",
+        "In `.agro/skills/remote-sandbox/checks/agro-rows.sh`, host mode R06 requires PID 1 `docker-init` and a passing healthcheck, and host mode R07 waits for a passing healthcheck. Image mode keeps the systemd checks. `references/rationale.md` describes both modes for R04, R06, and R07.",
+        "`sandbox-boot-smoke.test.ts`, `sandbox-upgrade-smoke.test.ts`, `cli-first-install-smoke.test.ts`, and `boot-banner.test.ts` pass with fixtures for Compose init.",
+        "The CI shellcheck command exits 0."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "1-5 executed: diff reviewed (verify_compose_init requires docker-init + readiness file; upgrade smoke waits on readiness file, reads docker logs, fails fast on sandbox-main warning; verify_compose_init_ready; banner recovery by PID 1 type; agro-rows host R06/R07 use docker-init + healthcheck, image mode keeps systemd; host-mode R04 reports SKIPPED, accepted as consistent with the brief). 6 executed: full npx vitest run 92 files, 2035 passed, 2 skipped. 7 executed: CI shellcheck set exit 0. Merge repair 62a28060: docker-egress.sh (from #1398) E07/E15 use the readiness file and docker logs instead of systemctl/journalctl; git grep systemctl|journalctl on the check exit 1; CI shellcheck line exit 0.",
+      "dependsOn": [
+        "US-003"
+      ],
+      "files": [
+        ".agro/scripts/sandbox-boot-smoke.sh",
+        ".agro/scripts/sandbox-upgrade-smoke.sh",
+        ".agro/scripts/cli-first-install-smoke.sh",
+        ".agro/install/banner.sh",
+        ".agro/skills/remote-sandbox/checks/agro-rows.sh",
+        ".agro/skills/remote-sandbox/references/rationale.md",
+        ".agro/scripts/__tests__/sandbox-boot-smoke.test.ts",
+        ".agro/scripts/__tests__/sandbox-upgrade-smoke.test.ts",
+        ".agro/scripts/__tests__/cli-first-install-smoke.test.ts",
+        ".agro/scripts/__tests__/boot-banner.test.ts"
+      ],
+      "commit": "41e61bb4"
+    },
+    {
+      "id": "US-005",
+      "title": "Update the contract, the docs, and the changelog",
+      "description": "As an operator, I want `AGENTS.md`, the docs, and the changelog to describe Compose init so that the written contract matches the sandbox.",
+      "acceptanceCriteria": [
+        "Root `AGENTS.md` non-negotiable 3 states that Compose init is PID 1 in the sandbox and runs the bootstrap once, and that the image keeps systemd for VM image mode. The file does not state that systemd is PID 1 in the sandbox.",
+        "`docs/security-considerations.md` describes the default privilege posture: no added capability, the default AppArmor profile, and no private cgroup. The section states that VM image mode boots `/sbin/init`.",
+        "`docs/deployment-prebuilt-image.md` describes the Compose boot through `sandbox-main.sh`. The `docker run` example uses `--init --entrypoint /usr/local/bin/sandbox-main.sh` and no systemd flags.",
+        "`docs/runtimes/openshell.md` names `sandbox-main.sh` as the script that `openshell-main.sh` runs.",
+        "`.agro/skills/t3/references/sandbox-processes.md` and `.agro/cli/src/cli.ts:216` do not state that systemd supervises the sandbox.",
+        "`CHANGELOG.md` has one `**BREAKING:**` bullet under `### Changed` in `## [Unreleased]`. The bullet states that the Compose sandbox drops `SYS_ADMIN`, `apparmor=unconfined`, `cgroup: private`, and the tmpfs mounts, and runs Compose init. The bullet ends with `([#1393](https://github.com/mifunedev/agro/issues/1393))`.",
+        "`npx vitest run .agro/cli/src/__tests__/docs-reference.test.ts` exits 0."
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "1,3,7 executed: diff reviewed (AGENTS.md non-negotiable 3 names Compose init and VM image mode systemd; deployment-prebuilt-image docker run uses --init --entrypoint sandbox-main.sh, no systemd flags; CHANGELOG ### Changed BREAKING bullet with #1393). 2,4,5,6 reasoned from worker diff and sweep: security-considerations, openshell.md, t3 sandbox-processes, installation.md, cli.ts help updated; remaining systemd mentions are host-side or VM image mode. 8 executed: docs-reference.test.ts 4 passed; pnpm run typecheck exit 0.",
+      "dependsOn": [
+        "US-003"
+      ],
+      "files": [
+        "AGENTS.md",
+        "docs/",
+        "CHANGELOG.md",
+        ".agro/skills/t3/references/sandbox-processes.md",
+        ".agro/cli/src/cli.ts"
+      ],
+      "commit": "5e10f130"
+    },
+    {
+      "id": "US-006",
+      "title": "Record manual review evidence",
+      "description": "As the advisor, I want a command transcript that proves the new default so that the PR `## Manual review` section has evidence.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/compose-init-default-sandbox/evidence/manual-review.md` holds each command in this list with its output and exit status: `git grep -n -E 'SYS_ADMIN|apparmor=unconfined|cgroup: private' -- .devcontainer`; `npx vitest run`; `pnpm run typecheck`; the CI shellcheck command; `bash .agro/scripts/docker-compose.sh config --quiet`;",
+        "The first `git grep` prints no line.",
+        "The transcript records the CI run of `sandbox-boot-guard.yml` on the PR head: the boot smoke, the legacy-volume upgrade smoke, and the CLI-first install smoke.",
+        "The transcript states that no live sandbox was rebuilt and that the remote-sandbox VM image mode rows were not run.",
+        "This story depends on US-001, US-002, US-003, US-004, and US-005."
+      ],
+      "priority": 6,
+      "passes": true,
+      "notes": "1,2 executed: evidence file holds git grep (no line, exit 1), npx vitest run (2035 passed, 2 skipped), typecheck 0, shellcheck 0, compose config 0 with rendered init/entrypoint/stop_signal keys, failure-path tests. 3 executed: CI on 13eaa973 all six checks pass; boot smoke 'Compose init (docker-init) is PID 1 and the bootstrap readiness file exists'; upgrade smoke wrote /run/agro/bootstrap.ready; CLI-first smoke phase all complete. 4 executed: no live rebuild; VM image mode rows R05-R08 not run; command shape recorded. 5 reasoned.",
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003",
+        "US-004",
+        "US-005"
+      ],
+      "files": [
+        ".agro/tasks/compose-init-default-sandbox/evidence/manual-review.md"
+      ],
+      "commit": "cdc0f07a"
+    },
+    {
+      "id": "US-007",
+      "title": "Remove the systemd consumer from the Langfuse fragment",
+      "description": "As a maintainer, I want the Langfuse fragment code, tests, and docs to stop naming systemd as a reader. The code then states only the consumer that exists.",
+      "acceptanceCriteria": [
+        "`.agro/cli/src/lib/tracing/providers/langfuse.ts` names no systemd reader. The error message for an uncarriable value names zsh only.",
+        "`langfuse-fragment.test.ts` has no `parseAsSystemdEnvironmentFile` helper and no test name that names systemd. The tests keep the bare `KEY=value` format, the single-quote rule, and the `.zshenv` round trip.",
+        "`docs/integrations/langfuse.md` does not state that systemd reads the fragment.",
+        "`git grep -n -i systemd -- .agro/cli/src/lib/tracing docs/integrations/langfuse.md` prints no line.",
+        "`npx vitest run .agro/cli/src/lib/tracing` and `pnpm run typecheck` exit 0."
+      ],
+      "priority": 7,
+      "passes": true,
+      "notes": "1,3,4 executed: git grep -n -i systemd -- .agro/cli/src/lib/tracing docs/integrations/langfuse.md exit 1; docs wording matches .agro/install/.zshenv set -a load. 2 reasoned from diff: parse helper removed, tests assert rendered text directly, zshenv round trip kept. 5 executed: vitest tracing + docs-reference pass.",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/lib/tracing/",
+        ".agro/cli/src/lib/tracing/__tests__/langfuse-fragment.test.ts",
+        "docs/integrations/langfuse.md"
+      ],
+      "commit": "283660fa"
+    },
+    {
+      "id": "US-008",
+      "title": "Add the remote-sandbox scripts to the CI shellcheck set",
+      "description": "As a maintainer, I want CI to lint the remote-sandbox scripts so that a shell defect in the VM matrix fails CI.",
+      "acceptanceCriteria": [
+        "The shellcheck commands in `.github/workflows/ci-harness.yml` and `.github/workflows/release.yml` include `.agro/skills/remote-sandbox/adapters/*.sh`, `.agro/skills/remote-sandbox/checks/*.sh`, and `.agro/skills/remote-sandbox/scripts/*.sh`.",
+        "Each script in those three folders has a `#!/usr/bin/env bash` shebang or a `shellcheck shell=bash` directive.",
+        "`shellcheck -S warning .agro/skills/remote-sandbox/adapters/*.sh .agro/skills/remote-sandbox/checks/*.sh .agro/skills/remote-sandbox/scripts/*.sh` exits 0. Each fix keeps the script behavior. A `shellcheck disable` directive is allowed only with a reason that a reviewer can verify in the same line.",
+        "`npx vitest run .agro/scripts/__tests__/remote-sandbox-suite.test.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts` exits 0."
+      ],
+      "priority": 8,
+      "passes": true,
+      "notes": "1 executed: ci-harness.yml and release.yml shellcheck lines include the three remote-sandbox globs. 2 reasoned from diff: shebang on executed checks, shell=bash directive on sourced files. 3 executed: ci-harness.yml shellcheck line run with v0.10.0 exit 0; disable directives carry same-line reasons. 4 executed: remote-sandbox suite + adapters tests pass. Repair c03b4f2b after merging development: hermes-home.sh shebang; ci-harness and release shellcheck lines re-run exit 0.",
+      "dependsOn": [],
+      "files": [
+        ".github/workflows/ci-harness.yml",
+        ".github/workflows/release.yml",
+        ".agro/skills/remote-sandbox/adapters/",
+        ".agro/skills/remote-sandbox/checks/",
+        ".agro/skills/remote-sandbox/scripts/"
+      ],
+      "commit": "a10b8ba9"
+    },
+    {
+      "id": "US-009",
+      "title": "Add shellcheck and hadolint to the sandbox image",
+      "description": "As an agent in the sandbox, I want `shellcheck` and `hadolint` in the image so that I run the CI lint commands before I push.",
+      "acceptanceCriteria": [
+        "`.devcontainer/Dockerfile` installs the Debian `shellcheck` package.",
+        "`.devcontainer/Dockerfile` installs a pinned `hadolint` release binary to `/usr/local/bin/hadolint` for `amd64` and `arm64`. The build verifies each binary with a pinned SHA-256 and fails on a mismatch or on another architecture.",
+        "`.agro/scripts/verify-sandbox-image.sh` fails when `shellcheck --version` or `hadolint --version` fails in the image.",
+        "hadolint with `.hadolint.yaml` exits 0 on `.devcontainer/Dockerfile`.",
+        "The CI job \"Validate sandbox compose and image build\" passes on the PR head."
+      ],
+      "priority": 9,
+      "passes": true,
+      "notes": "1,2 executed: Dockerfile diff reviewed; shellcheck apt package + command -v check; hadolint v2.12.0 (the CI action's version) pinned per arch, SHA-256 values re-fetched by the advisor from the release .sha256 files and matched; other arch exits 1. 3 executed: verify-sandbox-image.test.ts cases for missing hadolint/shellcheck pass. 4 executed: hadolint --config .hadolint.yaml exit 0. 5 executed: CI run 38161083662 on df139bfa built the image (/tmp/hadolint: OK) and verify-sandbox-image logged 'ok: hadolint --version -> Haskell Dockerfile Linter 2.12.0' and 'ok: shellcheck --version -> version: 0.10.0'. Full vitest + typecheck + CI shellcheck pass.",
+      "dependsOn": [],
+      "files": [
+        ".devcontainer/Dockerfile",
+        ".agro/scripts/verify-sandbox-image.sh",
+        ".agro/scripts/__tests__/",
+        "CHANGELOG.md"
+      ],
+      "commit": "f53e5f97"
+    },
+    {
+      "id": "US-010",
+      "title": "Record evidence for the folded stories",
+      "description": "As the advisor, I want the evidence file to cover US-007, US-008, and US-009 so that the PR `## Manual review` section proves the folded work.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/compose-init-default-sandbox/evidence/manual-review.md` has a section for each of US-007, US-008, and US-009 with each command, its output, and its exit status.",
+        "The section for US-009 quotes the CI log lines of `verify-sandbox-image.sh` that show the `shellcheck` and `hadolint` versions.",
+        "This story depends on US-007, US-008, and US-009."
+      ],
+      "priority": 10,
+      "passes": true,
+      "notes": "1,2 executed: evidence section C covers US-007 (git grep systemd exit 1, tracing 41 passed), US-008 (CI shellcheck line exit 0, failure path SC2148 on a scratch copy, remote-sandbox tests 21 passed), US-009 (Dockerfile pins, verify-sandbox-image tests 38 passed, CI run 38161083662 hadolint 2.12.0 / shellcheck 0.10.0 lines). 3 reasoned.",
+      "dependsOn": [
+        "US-007",
+        "US-008",
+        "US-009"
+      ],
+      "files": [
+        ".agro/tasks/compose-init-default-sandbox/evidence/manual-review.md"
+      ],
+      "commit": "63db6379"
+    }
+  ]
+}
