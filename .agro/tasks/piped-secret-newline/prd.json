@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "bug/1409-piped-secret-newline",
+  "description": "Piped secret without a trailing newline: make `agro secret set` write a piped value that has no trailing newline.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Write a piped value that has no trailing newline",
+      "description": "As the operator, I want `agro secret set <KEY>` to write a piped value without a trailing newline so that a script never hides an unwritten secret.",
+      "acceptanceCriteria": [
+        "A test in `.agro/cli/src/lib/__tests__/` pipes `value` with no trailing newline into `askSecretPiped` through `askSecret` and asserts that the result is `value`.",
+        "A test asserts that empty piped input resolves to an empty string, so that `runSecretSet` exits 1 with `no value entered`.",
+        "The new tests fail before the change in `.agro/cli/src/lib/prompt.ts`.",
+        "`npx vitest run .agro/cli/src/lib/__tests__/` exits 0.",
+        "`npm run typecheck` exits 0.",
+        "`CHANGELOG.md` has one `### Fixed` entry under `## [Unreleased]` that links #1409."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "AC1-2 executed: prompt-piped.test.ts swaps process.stdin for a Readable; no-newline input returns value; empty input returns empty string (config-secret.test.ts covers the exit 1 for an empty value). AC3 executed by the worker: both new cases timed out before the fix. AC4 executed on the integrated branch: vitest on lib/__tests__ plus config-secret exit 0 (252 passed). AC5 executed: npm run typecheck exit 0. AC6 reasoned from the diff: one Fixed entry links #1409 and #1411. Root cause: rl.question settles only on a newline-terminated line.",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/lib/prompt.ts",
+        ".agro/cli/src/lib/__tests__/prompt-piped.test.ts",
+        "CHANGELOG.md"
+      ],
+      "commit": "64ab585d"
+    },
+    {
+      "id": "US-002",
+      "title": "Record manual review evidence",
+      "description": "As the advisor, I want a command transcript so that the PR shows the changed behavior.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/piped-secret-newline/evidence/manual-review.md` holds the output and exit code of `printf '%s' dummy-not-a-secret | node .agro/cli/dist/agro.js secret set GH_TOKEN --sandbox review-box` in a temporary `AGRO_HOME`, and of `agro secret list --sandbox review-box` after the write.",
+        "The file holds the output and exit code of `printf '' | node .agro/cli/dist/agro.js secret set GH_TOKEN --sandbox review-box`, and that exit code is 1.",
+        "The transcript holds no secret value.",
+        "The story deletes each temporary directory that it creates."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "AC1-2 executed by the worker and copied from the observed run: no-newline pipe exit 0 then list shows GH_TOKEN set; empty pipe prints no value entered and exits 1, list shows no secrets set. AC3 executed by the advisor: only the dummy string appears. AC4 executed by the worker: both temp homes removed.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/tasks/piped-secret-newline/evidence/manual-review.md"
+      ],
+      "commit": "426bcdd8"
+    }
+  ]
+}
