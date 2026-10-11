@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 set -uo pipefail
 export PATH="$HOME/.local/bin:$PATH"
 XDG_RUNTIME_DIR="/run/user/$(id -u)"
@@ -85,6 +86,12 @@ wait_ready
 lst=$(agro sandbox list 2>&1); printf '%s\n' "$lst" | quote
 if printf '%s\n' "$lst" | grep -q "^$N .*openshell.*ready"; then res O08-list-ready PASS "ready"; else res O08-list-ready FAIL "$(printf '%s\n' "$lst" | tail -1)"; fi
 
+echo "== workload environment"
+x sh -c 'echo "exec HOME=$HOME PATH=$PATH"' 2>&1 | quote
+openshell sandbox exec -n "$N" --no-login-shell -- sh -c 'echo "no-login HOME=$HOME PATH=$PATH"' 2>&1 | quote
+x bash -lc 'echo "bash -l HOME=$HOME PATH=$PATH"' 2>&1 | quote
+x zsh -lc 'echo "zsh -l HOME=$HOME PATH=$PATH"' 2>&1 | quote
+
 out=$(x bash -lc 'whoami; pwd' 2>&1); rc=$?
 if [ "$(printf '%s\n' "$out" | tail -2 | tr '\n' ' ')" = "sandbox /home/sandbox/harness " ]; then
   res O09-exec-identity PASS "$(printf '%s' "$out" | tr '\n' ' ')"
@@ -93,7 +100,9 @@ else
 fi
 
 out=$({ sleep 5; echo "echo ID=\$(whoami) DIR=\$(pwd)"; sleep 2; echo exit; } | script -qec "agro shell $N" /dev/null 2>&1); rc=$?
-if printf '%s' "$out" | tr -d '\r' | grep -q 'ID=sandbox DIR=/home/sandbox/harness'; then
+if printf '%s' "$out" | grep -q 'Type one of the keys in parentheses'; then
+  res O10-agro-shell FAIL "rc=$rc zsh entered zsh-newuser-install"
+elif printf '%s' "$out" | tr -d '\r' | grep -q 'ID=sandbox DIR=/home/sandbox/harness'; then
   res O10-agro-shell PASS "rc=$rc"
 else
   res O10-agro-shell FAIL "rc=$rc $(printf '%s' "$out" | tr -d '\r' | tail -3 | tr '\n' ' ' | cut -c1-200)"
@@ -128,11 +137,19 @@ fi
 
 out=$(x bash -lc 'agro harness install claude-code' 2>&1); rc=$?
 printf '%s\n' "$out" | tail -4 | quote
-cv=$(x bash -lc 'claude --version' 2>&1 | tail -1)
-res O16-claude-install "$(verdict "$rc")" "rc=$rc claude=$cv"
+cv=$(x zsh -lc 'claude --version' 2>&1); cvrc=$?
+cv=$(printf '%s\n' "$cv" | tail -1)
+if [ "$rc" = 0 ] && [ "$cvrc" = 0 ]; then
+  res O16-claude-install PASS "rc=0 claude=$cv"
+else
+  res O16-claude-install FAIL "rc=$rc zsh-claude-rc=$cvrc claude=$cv"
+fi
 out=$(x bash -lc 'ANTHROPIC_API_KEY=sk-ant-invalid-placeholder timeout 60 claude -p "reply with OK"' 2>&1); rc=$?
 printf '%s\n' "$out" | tail -3 | quote
-if printf '%s' "$out" | grep -qiE 'invalid.*(api|x-api)-?key|authentication_error|401'; then
+denied=$(openshell logs "$N" --since 5m 2>&1 | grep -i 'denied' | grep 'api\.anthropic\.com' | tail -1)
+if [ -n "$denied" ]; then
+  res O17-anthropic-egress FAIL "policy denied api.anthropic.com: $(printf '%s' "$denied" | cut -c1-160)"
+elif printf '%s' "$out" | grep -qiE 'invalid api key|invalid.*(api|x-api)-?key|authentication_error|401'; then
   res O17-anthropic-egress PASS "api.anthropic.com answered 401"
 else
   res O17-anthropic-egress FAIL "rc=$rc"
