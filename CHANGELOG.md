@@ -8,6 +8,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+### Fixed
+- Fix `/t3` so that `herdr` runs in a T3 Code terminal and `/t3 start --tailscale` prints the `ts.net` pairing URL and QR code ([#1394](https://github.com/mifunedev/agro/issues/1394)).
+
 ## [0.20.0] - 2026-10-10
 
 ### Added
