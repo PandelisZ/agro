@@ -93,13 +93,36 @@ See the [field reference](../configuration.md#langfuse-tracing) for the four
 
 | Path | Mode | Holds |
 | --- | --- | --- |
-| `~/.config/agro/langfuse.env` | `0600` | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`, `LANGFUSE_TRACING_ENVIRONMENT` |
-| `~/.claude/settings.json` | `0644` | a merged `env` block that carries the base URL and the environment |
+| `~/.config/agro/langfuse.env` | `0600` | `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_BASE_URL`, `LANGFUSE_TRACING_ENVIRONMENT`, `PI_LANGFUSE_MAX_CHARS` |
+| `~/.claude/settings.json` | `0644` | a merged `env` block that carries the base URL, the environment, and `CC_LANGFUSE_MAX_CHARS` |
 | `~/.pi/agent/langfuse.json` | `0644` | `environment` and `userId` |
 | `~/.codex/langfuse.json` | `0600` | `enabled`, `tags`, and `environment` |
 
 The fragment holds the only credential at rest. The three harness files carry no
 key.
+
+### Field size limit
+
+`apply` sets the field size limit of the Claude Code and Pi plugins to `100000`
+characters. The plugin default is `20000`. In the #1413 analysis, 46 of 100
+sampled sessions reached the `20000` limit. The constant
+`LANGFUSE_PLUGIN_MAX_CHARS` in `.agro/cli/src/lib/tracing/providers/langfuse.ts`
+owns the value.
+
+- Claude Code reads `CC_LANGFUSE_MAX_CHARS` from the `env` block of
+  `~/.claude/settings.json`.
+- Pi reads `PI_LANGFUSE_MAX_CHARS` only from the environment, so `apply` writes
+  it into the fragment.
+
+**Each traced input and output field can carry 5 times more text.** File
+contents, command output, diffs, and pasted text go to the Langfuse deployment.
+More repository content therefore leaves the sandbox. Traces were never free of
+secrets. Treat the Langfuse project as a store of sensitive repository data.
+
+The larger limit also increases Langfuse ingest and storage, and the judge
+tokens for each analyzed session. To use a different limit for Claude Code, set
+`CC_LANGFUSE_MAX_CHARS` in the `env` block of `.claude/settings.local.json`. For
+Pi, export `PI_LANGFUSE_MAX_CHARS` in the shell before you start `pi`.
 
 **The fragment carries bare `KEY=value` lines and no `export`.** The tracked `.agro/install/.zshenv` wraps its `source` in
 `set -a` and `set +a`, so an interactive shell exports every key anyway. In your
@@ -155,7 +178,7 @@ alone. The keys reach the plugin from the fragment. Git tracks a project
 `.claude/settings.json`, so the user file is the right home for these values.
 
 Optional: `LANGFUSE_USER_ID`, `CC_LANGFUSE_TRACE_TAGS`, `CC_LANGFUSE_MAX_CHARS`
-(default `20000`), `CC_LANGFUSE_SKILL_TAGS` (default `true`),
+(`apply` writes `100000`; see [field size limit](#field-size-limit)), `CC_LANGFUSE_SKILL_TAGS` (default `true`),
 `CC_LANGFUSE_CAPTURE_SKILL_CONTENT` (default `false`), `CC_LANGFUSE_DEBUG`.
 Environment variables win over `/plugin configure` values.
 
@@ -215,8 +238,10 @@ grep -A2 'tracing@codex-observability-plugin.*stop' ~/.codex/config.toml
 
 Optional variables use a `LANGFUSE_CODEX_` prefix and override the file:
 `LANGFUSE_CODEX_TAGS`, `LANGFUSE_CODEX_METADATA`, `LANGFUSE_CODEX_USER_ID`,
-`LANGFUSE_CODEX_MAX_CHARS` (default `20000`), `LANGFUSE_CODEX_DEBUG`,
-`LANGFUSE_CODEX_FAIL_ON_ERROR` (default `false`).
+`LANGFUSE_CODEX_DEBUG`, `LANGFUSE_CODEX_FAIL_ON_ERROR` (default `false`).
+
+The Codex plugin `tracing` 0.4.2 has no field size setting. Codex sends each
+field without a plugin character limit.
 
 ## ✅ Verify
 
@@ -249,6 +274,8 @@ LANGFUSE_CODEX_DEBUG=true codex    # Codex
 | Claude Code reports a missing hook script | The `uv` environment is incomplete. Remove `~/.cache/uv/environments-v2/langfuse-hook-*`, run `uv cache prune`, then rerun the hook once. |
 | Traces reach the wrong project | The key pair belongs to another project. Query `/api/public/projects` to resolve it. |
 | `/api/public/traces` returns 404 | The deployment runs Langfuse v4 in `events_only` mode. Ingestion still works; read traces in the interface. |
+| Root spans show a missing parent | By design, the Claude Code plugin starts each "Conversational Turn" root span under a carrier span and never exports the carrier. Langfuse marks the root with `isRootObservation: true` and keeps the parent id. Ignore the parent. |
+| A turn has tool and LLM spans but no root span | The Claude Code plugin can emit one turn over more than one hook firing. The plugin limits each flush to 5 seconds. If the flush of the first firing fails, Langfuse never stores the "Conversational Turn" root span, and the later spans point at a missing parent. That turn loses its root input and output. No setting recovers them. The upstream report is [langfuse/claude-observability-plugin#103](https://github.com/langfuse/claude-observability-plugin/issues/103). |
 | Your own API call returns 403 | A content delivery network blocks non-browser clients. This affects your calls, not the plugins. |
 | No traces after `agro destroy` | The command deletes the home volume, so every plugin install is gone. The entrypoint re-applies the settings at boot; run `agro config langfuse` to reinstall the plugins. |
 

@@ -129,6 +129,36 @@ describe("normalizeSession", () => {
     expect(event(record, "cc-tool-1").metadata).toMatchObject({ tool_name: "Bash", tool_id: "call-1" });
   });
 
+  it("skips the never-stored parent of a root observation without a gap, a cross-session entry, or a lookup", async () => {
+    const record = cc();
+    expect(event(record, "cc-root-1")).toMatchObject({ parentObservationId: "cc-carrier-1", isRootObservation: true });
+    expect(event(record, "cc-root-2")).toMatchObject({ parentObservationId: "cc-carrier-2", isRootObservation: true });
+    expect(event(record, "cc-gen-1").isRootObservation).toBe(false);
+    expect(record.capture.missing).toEqual([]);
+    expect(record.capture.crossSessionParents).toEqual([]);
+    const client = {
+      async listTraceObservations() {
+        throw new Error("no lookup expected");
+      },
+    };
+    const window = { from: "2026-10-02T09:00:00.000Z", to: "2026-10-02T11:05:04.000Z" };
+    const lookups = await lookupParents(client, { observations: load("claude-code-session.json"), window, cache: new Map() });
+    expect(lookups.size).toBe(0);
+  });
+
+  it("keeps a parent gap for a non-root row whose parent is absent", () => {
+    const observations = load("claude-code-session.json").map((o) =>
+      o.id === "cc-tool-1" ? { ...o, parentObservationId: "cc-gone" } : o.id === "cc-tool-3" ? { ...o, parentObservationId: "cc-lost", isRootObservation: undefined } : o,
+    );
+    const record = single(observations, { sessionId: "sess-cc", expected: ccExpected });
+    expect(event(record, "cc-tool-3").isRootObservation).toBeNull();
+    expect(record.capture.complete).toBe(false);
+    expect(record.capture.missing).toEqual([
+      { kind: "parent", observationId: "cc-gone", traceId: "trace-cc-1", referencedBy: "cc-tool-1" },
+      { kind: "parent", observationId: "cc-lost", traceId: "trace-cc-2", referencedBy: "cc-tool-3" },
+    ]);
+  });
+
   it("derives the tool role from a span that names a tool in its metadata", () => {
     const span = { id: "s1", traceId: "t1", sessionId: "s", type: "SPAN", startTime: "2026-10-02T10:00:00.000Z", metadata: { tool_name: "Read" }, output: "text" };
     expect(single([span]).events[0].role).toBe("tool");
@@ -251,6 +281,7 @@ describe("normalizeSession", () => {
       observationId: "b1",
       traceId: "tb",
       parentObservationId: null,
+      isRootObservation: null,
       type: "SPAN",
       name: null,
       startTime: "2026-10-02T10:00:00.000Z",

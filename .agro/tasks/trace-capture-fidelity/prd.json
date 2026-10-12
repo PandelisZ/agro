@@ -1,0 +1,95 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1418-trace-capture-fidelity",
+  "description": "Trace capture fidelity for behavioral analysis: write the approved 100000-character capture limit to Claude Code and Pi, stop counting plugin root parents as capture gaps, and document the limit, the trade-off, and the root cause.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Write the approved capture limit to each harness",
+      "description": "As an operator, I want `agro langfuse apply` to set the plugin capture limit to 100000 characters so that the plugins truncate fewer fields.",
+      "acceptanceCriteria": [
+        "A failing test is committed before the change, then passes: the Claude Code writer puts `CC_LANGFUSE_MAX_CHARS: \"100000\"` in the `env` block of `~/.claude/settings.json` and keeps every other key.",
+        "A failing test is committed before the change, then passes: the fragment renders `PI_LANGFUSE_MAX_CHARS=100000` after the four existing keys.",
+        "One exported constant holds the value `100000`. Both writers read that constant.",
+        "`pnpm run typecheck`, `pnpm test`, and `pnpm run build` exit 0 in the task worktree."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "1 executed: red commit 3d7b3a94 (vitest tracing exit 1), green after b25fa532. 2 executed: same red/green, fragment renders PI_LANGFUSE_MAX_CHARS=100000 fifth. 3 reasoned: LANGFUSE_PLUGIN_MAX_CHARS in providers/langfuse.ts read by both writers. 4 executed on task branch: typecheck 0, test 0 (2402 passed, 2 skipped), build 0.",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/lib/tracing/",
+        ".agro/cli/src/commands/langfuse.ts"
+      ],
+      "commit": "b25fa532"
+    },
+    {
+      "id": "US-002",
+      "title": "Stop counting plugin root parents as capture gaps",
+      "description": "As an analyst, I want the adapter to skip the parent of a root observation so that the capture report counts only real gaps.",
+      "acceptanceCriteria": [
+        "A failing test is committed before the change, then passes: a fixture row with `isRootObservation: true` and an absent parent adds no `parent` entry to `capture.missing`.",
+        "A test proves that a non-root row with an absent parent still adds a `parent` entry.",
+        "The normalized event keeps `isRootObservation`, and `references/run-files.md` names the field.",
+        "`pnpm test` exits 0 in the task worktree."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "1 executed: red commit 2f9cd503 (23 normalize tests failed), green after 46601623; root row adds no missing or crossSession entry and triggers no lookup. 2 executed: non-root rows with false and null keep parent gaps. 3 executed: event carries isRootObservation; run-files.md names it; ste-check exit 0. 4 executed on task branch: typecheck 0, test 0 (2404 passed, 2 skipped), build 0. Finding: facts.mjs:251 isBoundary misses Claude Code turn roots with a phantom parent; deferred to Close.",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/behavioral-training/scripts/lib/normalize.mjs",
+        ".agro/skills/behavioral-training/references/run-files.md",
+        ".agro/scripts/__tests__/behavioral-training-normalize.test.ts",
+        ".agro/scripts/__tests__/fixtures/behavioral-training/normalize/"
+      ],
+      "commit": "46601623"
+    },
+    {
+      "id": "US-003",
+      "title": "Document the limit, the trade-off, and the root cause",
+      "description": "As an operator, I want `docs/integrations/langfuse.md` to state the capture limit and its cost so that I can change the limit with full knowledge.",
+      "acceptanceCriteria": [
+        "`docs/integrations/langfuse.md` states the 100000 limit for Claude Code and Pi, and the privacy and cost trade-off.",
+        "The Codex section no longer names `LANGFUSE_CODEX_MAX_CHARS`, because plugin 0.4.2 has no such setting.",
+        "`references/langfuse-adapter.md` explains the root-parent rule and cites the Claude Code plugin behavior.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh` exits 0 on each changed Markdown file."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "1 executed: Field size limit section states 100000 for Claude Code and Pi with privacy and cost trade-off. 2 executed: grep LANGFUSE_CODEX_MAX_CHARS count 0. 3 executed: langfuse-adapter.md Root parents subsection cites langfuse_hook.py 3076-3102, 3162. 4 executed on task branch: ste-check exit 0 on both files; behavioral-training-docs test exit 0.",
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
+      "files": [
+        "docs/integrations/langfuse.md",
+        ".agro/skills/behavioral-training/references/langfuse-adapter.md"
+      ],
+      "commit": "58131f46"
+    },
+    {
+      "id": "US-004",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want a command transcript so that I can see the new limit and the new gap count on real output.",
+      "acceptanceCriteria": [
+        "`evidence/manual-review.md` shows `agro langfuse apply` output with a temporary `HOME`, and the rendered `CC_LANGFUSE_MAX_CHARS` and `PI_LANGFUSE_MAX_CHARS` values.",
+        "`evidence/manual-review.md` shows aggregate missing-parent counts before and after the US-002 rule on one fixture. It holds no transcript content and no secret.",
+        "The temporary `HOME` is deleted after the run."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "1 executed in part: agro langfuse apply with temporary HOME and fake-key throwaway project exit 0; jq .env.CC_LANGFUSE_MAX_CHARS printed 100000. Reading PI_LANGFUSE_MAX_CHARS from the fragment was BLOCKED by the operator-only path guard; reasoned via renderer test asserting PI_LANGFUSE_MAX_CHARS=100000 (41 tests exit 0), same renderer that apply uses. 2 executed: fixture parentGaps 2 before US-002, 0 after; counts only. 3 executed: temp HOME and project removed, test -e reports gone. ste-check exit 0.",
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003"
+      ],
+      "files": [
+        ".agro/tasks/trace-capture-fidelity/evidence/"
+      ],
+      "commit": "5157d2aa"
+    }
+  ]
+}

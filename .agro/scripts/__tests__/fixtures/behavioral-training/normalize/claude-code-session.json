@@ -35,7 +35,8 @@
     "type": "TOOL",
     "name": "Bash",
     "startTime": "2026-10-02T10:05:02.000Z",
-    "endTime": "2026-10-02T10:05:04.000Z"
+    "endTime": "2026-10-02T10:05:04.000Z",
+    "isRootObservation": false
   },
   {
     "projectId": "proj-synthetic",
@@ -70,7 +71,8 @@
     "type": "GENERATION",
     "name": "Claude Response",
     "startTime": "2026-10-02T10:00:03.000Z",
-    "endTime": "2026-10-02T10:00:04.000Z"
+    "endTime": "2026-10-02T10:00:04.000Z",
+    "isRootObservation": false
   },
   {
     "projectId": "proj-synthetic",
@@ -80,7 +82,7 @@
       "claude-code"
     ],
     "version": null,
-    "parentObservationId": null,
+    "parentObservationId": "cc-carrier-1",
     "level": "DEFAULT",
     "statusMessage": null,
     "model": null,
@@ -100,7 +102,8 @@
     "type": "SPAN",
     "name": "Claude Code Turn",
     "startTime": "2026-10-02T10:00:00.000Z",
-    "endTime": "2026-10-02T10:00:04.000Z"
+    "endTime": "2026-10-02T10:00:04.000Z",
+    "isRootObservation": true
   },
   {
     "projectId": "proj-synthetic",
@@ -138,7 +141,8 @@
     "type": "TOOL",
     "name": "Bash",
     "startTime": "2026-10-02T10:05:02.000Z",
-    "endTime": "2026-10-02T10:05:03.000Z"
+    "endTime": "2026-10-02T10:05:03.000Z",
+    "isRootObservation": false
   },
   {
     "projectId": "proj-synthetic",
@@ -173,7 +177,8 @@
     "type": "GENERATION",
     "name": "Claude Response",
     "startTime": "2026-10-02T10:00:01.000Z",
-    "endTime": "2026-10-02T10:00:01.500Z"
+    "endTime": "2026-10-02T10:00:01.500Z",
+    "isRootObservation": false
   },
   {
     "projectId": "proj-synthetic",
@@ -183,7 +188,7 @@
       "claude-code"
     ],
     "version": null,
-    "parentObservationId": null,
+    "parentObservationId": "cc-carrier-2",
     "level": "DEFAULT",
     "statusMessage": null,
     "model": null,
@@ -203,7 +208,8 @@
     "type": "SPAN",
     "name": "Claude Code Turn",
     "startTime": "2026-10-02T10:05:00.000Z",
-    "endTime": "2026-10-02T10:05:04.000Z"
+    "endTime": "2026-10-02T10:05:04.000Z",
+    "isRootObservation": true
   },
   {
     "projectId": "proj-synthetic",
@@ -241,7 +247,8 @@
     "type": "TOOL",
     "name": "Bash",
     "startTime": "2026-10-02T10:00:02.000Z",
-    "endTime": "2026-10-02T10:00:02.500Z"
+    "endTime": "2026-10-02T10:00:02.500Z",
+    "isRootObservation": false
   },
   {
     "projectId": "proj-synthetic",
@@ -276,6 +283,7 @@
     "type": "GENERATION",
     "name": "Claude Response",
     "startTime": "2026-10-02T10:05:01.000Z",
-    "endTime": "2026-10-02T10:05:01.500Z"
+    "endTime": "2026-10-02T10:05:01.500Z",
+    "isRootObservation": false
   }
 ]
