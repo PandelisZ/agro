@@ -73,6 +73,8 @@ Write one record for each story before dispatch. Keep only these fields:
    `passes: true`.
 2. Run the ready stories of a wave in parallel, at most 5 workers per wave.
 3. Give each parallel writer an isolated worktree. Branch it from the task branch.
+   Before dispatch, when a worker worktree has a `package.json`, run
+   `pnpm install --frozen-lockfile` in that worktree.
 4. Stories with overlapping `files` run in sequence.
 5. Workers stay flat. Workers never spawn workers.
 
