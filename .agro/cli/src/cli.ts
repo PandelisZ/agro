@@ -152,7 +152,7 @@ Usage:
   ${bin} compose config         Print the resolved docker compose configuration
   ${bin} egress <args...>       Read the egress proxy log or reload its allowlist (log|reload)
   ${bin} workspace <args...>    Create and list host AGRO workspaces (create|list)
-  ${bin} node <args...>         Create, list, and delete agro-console sandbox nodes
+  ${bin} node <args...>         Manage remote agro-console sandbox nodes (create|list|delete)
   ${bin} harness <args...>      Install and inspect agent CLI harnesses
   ${bin} tool <args...>         Install and inspect sandbox tooling
   ${bin} gateway <args...>      Manage a messaging client session (pi|hermes|openclaw)

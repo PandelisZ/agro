@@ -1,5 +1,6 @@
 import { isOneOf, NODE_VERBS } from "../command-table.js";
 import { resolveProjectRoot } from "../lib/project.js";
+import * as prompt from "../lib/prompt.js";
 import { readSecret } from "../lib/secrets.js";
 
 export const CONSOLE_CONFIG_MISSING =
@@ -30,6 +31,7 @@ export interface NodeDeps {
   now: () => number;
   pollIntervalMs: number;
   timeoutMs: number;
+  confirm: (question: string) => Promise<boolean>;
 }
 
 interface ConsoleNode {
@@ -75,6 +77,7 @@ function defaultDeps(): NodeDeps {
     now: () => Date.now(),
     pollIntervalMs: NODE_POLL_INTERVAL_MS,
     timeoutMs: NODE_READY_TIMEOUT_MS,
+    confirm: (question) => prompt.confirm(question, false),
   };
 }
 
@@ -263,6 +266,88 @@ async function runCreate(
   return 0;
 }
 
+function toNodeList(body: unknown): ConsoleNode[] {
+  const record = asRecord(body);
+  const items = Array.isArray(body) ? body : record?.nodes ?? record?.data ?? record?.items;
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item) => toNode(item) ?? []);
+}
+
+async function runList(
+  tokens: string[],
+  io: NodeIO,
+  deps: NodeDeps,
+  config: ConsoleConfig,
+  bin: string,
+): Promise<number> {
+  const prefix = `${bin} node list`;
+  const extra = tokens.find((token) => token !== "--json");
+  if (extra !== undefined) {
+    io.stderr(`${prefix}: ${extra.startsWith("-") ? "unknown flag" : "unexpected argument"} "${extra}"\n`);
+    return 1;
+  }
+  const listed = await callApi(deps, config, "GET", "/api/nodes");
+  if (!listed.ok) {
+    io.stderr(`${prefix}: ${listed.message}\n`);
+    return 1;
+  }
+  const rows = toNodeList(listed.body).map(({ id, name, profile, status, ipv4 }) => ({ id, name, profile, status, ipv4 }));
+  if (tokens.includes("--json")) {
+    io.stdout(`${JSON.stringify(rows)}\n`);
+    return 0;
+  }
+  if (rows.length === 0) {
+    io.stdout("no nodes\n");
+    return 0;
+  }
+  const table = [
+    ["ID", "NAME", "PROFILE", "STATUS", "IPV4"],
+    ...rows.map((row) => [row.id, row.name ?? "-", row.profile ?? "-", row.status, row.ipv4 ?? "-"]),
+  ];
+  const widths = table[0].map((_, column) => Math.max(...table.map((cells) => cells[column].length)));
+  for (const cells of table) {
+    io.stdout(`${cells.map((cell, column) => cell.padEnd(widths[column])).join("  ").trimEnd()}\n`);
+  }
+  return 0;
+}
+
+async function runDelete(
+  tokens: string[],
+  io: NodeIO,
+  deps: NodeDeps,
+  config: ConsoleConfig,
+  bin: string,
+): Promise<number> {
+  const prefix = `${bin} node delete`;
+  const flag = tokens.find((token) => token.startsWith("-") && token !== "--yes" && token !== "-y");
+  if (flag !== undefined) {
+    io.stderr(`${prefix}: unknown flag "${flag}"\n`);
+    return 1;
+  }
+  const ids = tokens.filter((token) => !token.startsWith("-"));
+  if (ids.length !== 1) {
+    io.stderr(`${prefix}: takes exactly one node id\n`);
+    return 1;
+  }
+  const [id] = ids;
+  const yes = tokens.includes("--yes") || tokens.includes("-y");
+  if (!yes && !(await deps.confirm(`Destroy console node ${id}?`))) {
+    io.stderr(`${prefix}: aborted — node ${id} unchanged\n`);
+    return 1;
+  }
+  const deleted = await callApi(deps, config, "DELETE", `/api/nodes/${encodeURIComponent(id)}`);
+  if (!deleted.ok) {
+    io.stderr(
+      deleted.status === 403
+        ? `${prefix}: destroy needs the admin role in agro-console\n`
+        : `${prefix}: ${deleted.message}\n`,
+    );
+    return 1;
+  }
+  io.stdout(`deleted ${id}\n`);
+  return 0;
+}
+
 export async function runNode(
   args: string[],
   io: NodeIO,
@@ -288,5 +373,7 @@ export async function runNode(
     io.stderr(`${bin} node ${verb}: ${CONSOLE_CONFIG_MISSING}\n`);
     return 1;
   }
+  if (verb === "list") return runList(rest, io, deps, config, bin);
+  if (verb === "delete") return runDelete(rest, io, deps, config, bin);
   return runCreate(rest, io, deps, config, bin);
 }

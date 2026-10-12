@@ -213,3 +213,103 @@ describe("agro node create", () => {
     expect(h.calls).toHaveLength(0);
   });
 });
+
+const NODES = [
+  { id: "n1", name: "alpha", profile: "sandbox", status: "running", ipv4: "1.2.3.4", ssh: "ssh sandbox@1.2.3.4" },
+  { id: "n2", name: "beta", profile: "desktop", status: "provisioning", ipv4: null, ssh: null },
+];
+
+describe("agro node list", () => {
+  it("prints one row per node with id, name, profile, status, and IPv4", async () => {
+    const h = harness([{ status: 200, body: NODES }]);
+    expect(await runNode(["list"], h.io, h.deps)).toBe(0);
+    expect(h.calls).toHaveLength(1);
+    expect(h.calls[0]).toMatchObject({ method: "GET", url: "https://console.example/api/nodes" });
+    expect(h.calls[0].headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    const rows = h.stdout().trimEnd().split("\n").slice(1);
+    expect(rows).toHaveLength(2);
+    expect(rows[0].split(/\s+/)).toEqual(["n1", "alpha", "sandbox", "running", "1.2.3.4"]);
+    expect(rows[1].split(/\s+/)).toEqual(["n2", "beta", "desktop", "provisioning", "-"]);
+  });
+
+  it("accepts a wrapped node list and prints JSON with --json", async () => {
+    const h = harness([{ status: 200, body: { nodes: NODES } }]);
+    expect(await runNode(["list", "--json"], h.io, h.deps)).toBe(0);
+    expect(JSON.parse(h.stdout())).toEqual([
+      { id: "n1", name: "alpha", profile: "sandbox", status: "running", ipv4: "1.2.3.4" },
+      { id: "n2", name: "beta", profile: "desktop", status: "provisioning", ipv4: null },
+    ]);
+  });
+
+  it("prints the HTTP status and code field on an API error", async () => {
+    const h = harness([{ status: 401, body: { error: "unauthorized", code: "UNAUTHORIZED" } }]);
+    expect(await runNode(["list"], h.io, h.deps)).toBe(1);
+    expect(h.stderr()).toContain("401");
+    expect(h.stderr()).toContain("UNAUTHORIZED");
+  });
+
+  it("exits 1 with the config message when a value is missing", async () => {
+    const h = harness([{ status: 200, body: [] }], { env: {} });
+    expect(await runNode(["list"], h.io, h.deps)).toBe(1);
+    expect(h.stderr()).toContain(CONSOLE_CONFIG_MISSING);
+    expect(h.calls).toHaveLength(0);
+  });
+});
+
+describe("agro node delete", () => {
+  it("asks for confirmation, then sends DELETE", async () => {
+    const questions: string[] = [];
+    const h = harness([{ status: 202, body: { id: "n1", status: "destroying" } }], {
+      confirm: async (q) => {
+        questions.push(q);
+        return true;
+      },
+    });
+    expect(await runNode(["delete", "n1"], h.io, h.deps)).toBe(0);
+    expect(questions).toHaveLength(1);
+    expect(questions[0]).toContain("n1");
+    expect(h.calls).toHaveLength(1);
+    expect(h.calls[0]).toMatchObject({ method: "DELETE", url: "https://console.example/api/nodes/n1" });
+    expect(h.calls[0].headers.Authorization).toBe(`Bearer ${TOKEN}`);
+    expect(h.all()).not.toContain(TOKEN);
+  });
+
+  it("sends nothing when the operator declines", async () => {
+    const h = harness([{ status: 202, body: {} }], { confirm: async () => false });
+    expect(await runNode(["delete", "n1"], h.io, h.deps)).toBe(1);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it("skips the confirmation with --yes", async () => {
+    let asked = false;
+    const h = harness([{ status: 204 }], {
+      confirm: async () => {
+        asked = true;
+        return false;
+      },
+    });
+    expect(await runNode(["delete", "n1", "--yes"], h.io, h.deps)).toBe(0);
+    expect(asked).toBe(false);
+    expect(h.calls.map((c) => c.method)).toEqual(["DELETE"]);
+  });
+
+  it("explains a 403 as the admin role requirement", async () => {
+    const h = harness([{ status: 403, body: { error: "forbidden", code: "FORBIDDEN" } }]);
+    expect(await runNode(["delete", "n1", "--yes"], h.io, h.deps)).toBe(1);
+    expect(h.stderr()).toContain("destroy needs the admin role in agro-console");
+  });
+
+  it("requires exactly one node id", async () => {
+    const h = harness([{ status: 204 }]);
+    expect(await runNode(["delete", "--yes"], h.io, h.deps)).toBe(1);
+    expect(await runNode(["delete", "a", "b", "--yes"], h.io, h.deps)).toBe(1);
+    expect(h.calls).toHaveLength(0);
+  });
+
+  it("exits 1 with the config message when a value is missing", async () => {
+    const h = harness([{ status: 204 }], { env: { AGRO_CONSOLE_URL: "https://console.example" } });
+    expect(await runNode(["delete", "n1", "--yes"], h.io, h.deps)).toBe(1);
+    expect(h.stderr()).toContain(CONSOLE_CONFIG_MISSING);
+    expect(h.calls).toHaveLength(0);
+  });
+});
