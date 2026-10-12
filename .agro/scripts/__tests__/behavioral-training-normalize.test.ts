@@ -281,6 +281,7 @@ describe("normalizeSession", () => {
       observationId: "b1",
       traceId: "tb",
       parentObservationId: null,
+      isRootObservation: null,
       type: "SPAN",
       name: null,
       startTime: "2026-10-02T10:00:00.000Z",

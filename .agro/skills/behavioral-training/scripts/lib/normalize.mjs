@@ -40,6 +40,7 @@ export const help = [
   "window in halves down to 10 minutes. capture.window records { from, to, source, splits }.",
   "A parent id outside the content read triggers one metadata-only lookup of its trace (at most 50",
   "traces per session). A parent in another session goes to capture.crossSessionParents, not a gap.",
+  "The parent of a root observation (isRootObservation: true) is never a gap and needs no lookup.",
   "Exit 1: a read failed; finished sessions stay in the file and --resume fetches only the rest.",
   "Exit 4: --max-sessions stopped the run; --resume with a larger budget continues.",
 ].join("\n");
@@ -212,6 +213,7 @@ function shape(observation) {
     id: String(observation.id),
     traceId: text(observation.traceId),
     parentObservationId: text(observation.parentObservationId),
+    isRootObservation: typeof observation.isRootObservation === "boolean" ? observation.isRootObservation : null,
     type: text(observation.type),
     name: text(observation.name),
     startTime: text(observation.startTime),
@@ -278,7 +280,7 @@ function captureOf(rows, { sessionId, expected, traceIds, window, parentLookups 
   const reportedParents = new Set();
   for (const row of rows) {
     const parent = row.parentObservationId;
-    if (parent !== null && !ids.has(parent) && !reportedParents.has(parent)) {
+    if (parent !== null && row.isRootObservation !== true && !ids.has(parent) && !reportedParents.has(parent)) {
       reportedParents.add(parent);
       const entry = parentEntry(parent, row, { sessionId, parentLookups });
       if (entry.missing) missing.push(entry.missing);
@@ -376,6 +378,7 @@ export function normalizeSession(
     observationId: row.id,
     traceId: row.traceId,
     parentObservationId: row.parentObservationId,
+    isRootObservation: row.isRootObservation,
     type: row.type,
     name: row.name,
     startTime: row.startTime,
@@ -455,7 +458,8 @@ function unresolvedTraces(observations) {
   for (const o of observations) {
     const parent = text(o.parentObservationId);
     const traceId = text(o.traceId);
-    if (parent !== null && traceId !== null && !ids.has(parent) && !traces.includes(traceId)) traces.push(traceId);
+    if (parent === null || traceId === null || o.isRootObservation === true) continue;
+    if (!ids.has(parent) && !traces.includes(traceId)) traces.push(traceId);
   }
   return traces.sort(byText);
 }

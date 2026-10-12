@@ -471,9 +471,11 @@ Each chunk repeats each session-level field: `traces`, `sourceLinks`,
   `normalize` sets each field only when the session holds exactly one distinct
   value. Otherwise the field is `null`.
 
-Each event holds `observationId`, `traceId`, `parentObservationId`, `type`,
-`name`, `startTime`, `endTime`, `role`, `input`, `output`, `metadata`,
-`model`, `level`, `statusMessage`, and `dedupedFrom`.
+Each event holds `observationId`, `traceId`, `parentObservationId`,
+`isRootObservation`, `type`, `name`, `startTime`, `endTime`, `role`, `input`,
+`output`, `metadata`, `model`, `level`, `statusMessage`, and `dedupedFrom`.
+`isRootObservation` is `true`, `false`, or `null` when Langfuse sends no
+boolean value.
 
 `capture.truncated` is `true` only on an explicit truncation marker.
 `capture.complete` is `true`, `false`, or `"unknown"`. `capture.window` is
@@ -504,7 +506,8 @@ A `parent` gap means that the trace lookup found the parent in the same
 session, or did not find the parent. A parent in another session is not a gap.
 `capture.crossSessionParents` lists each such parent as
 `{ observationId, sessionId, referencedBy }`. The adapter contract describes
-the trace lookup.
+the trace lookup. The parent of an event with `isRootObservation: true` is
+never a gap, and `normalize` does no trace lookup for it.
 
 `normalize` adds `completeness.normalize` to the manifest:
 `{ status, cause, sessions, chunks, complete, incomplete, unknown, truncated, crossSessionParents }`.
