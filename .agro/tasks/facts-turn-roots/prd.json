@@ -15,14 +15,15 @@
         "`pnpm run typecheck`, `pnpm test`, and `pnpm run build` exit 0 in the task worktree."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: red commit (facts tests exit 1, 2 failed); root event with carrier parent ends the follow-up (obeyed, next r-1). 2 executed: isBoundary accepts isRootObservation === true. 3 executed: non-root event with parent still yields routed-around. 4 executed on task branch: typecheck 0, test 0 (2405 passed, 2 skipped), build 0.",
       "dependsOn": [],
       "files": [
         ".agro/skills/behavioral-training/scripts/lib/facts.mjs",
         ".agro/scripts/__tests__/behavioral-training-facts.test.ts",
         ".agro/scripts/__tests__/fixtures/behavioral-training/facts/"
-      ]
+      ],
+      "commit": "be02f64e"
     },
     {
       "id": "US-002",
@@ -32,14 +33,15 @@
         "`evidence/manual-review.md` shows the facts test run and the `guardBlocks` follow-up of the new fixture before and after the change. The file holds no transcript content and no secret."
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: evidence/manual-review.md shows before (unclear, next b-2) and after (obeyed, next r-1) on the synthetic fixture, test runs, failure path, cleanup; ste-check 0; synthetic data only.",
       "dependsOn": [
         "US-001"
       ],
       "files": [
         ".agro/tasks/facts-turn-roots/evidence/"
-      ]
+      ],
+      "commit": "85249b29"
     }
   ]
 }
