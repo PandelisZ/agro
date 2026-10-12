@@ -57,8 +57,8 @@
         "`bash .agro/skills/ste/scripts/ste-check.sh` exits 0 on each changed Markdown file."
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: Field size limit section states 100000 for Claude Code and Pi with privacy and cost trade-off. 2 executed: grep LANGFUSE_CODEX_MAX_CHARS count 0. 3 executed: langfuse-adapter.md Root parents subsection cites langfuse_hook.py 3076-3102, 3162. 4 executed on task branch: ste-check exit 0 on both files; behavioral-training-docs test exit 0.",
       "dependsOn": [
         "US-001",
         "US-002"
@@ -66,7 +66,8 @@
       "files": [
         "docs/integrations/langfuse.md",
         ".agro/skills/behavioral-training/references/langfuse-adapter.md"
-      ]
+      ],
+      "commit": "58131f46"
     },
     {
       "id": "US-004",
