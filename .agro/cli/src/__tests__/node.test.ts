@@ -157,6 +157,18 @@ describe("agro node create", () => {
     expect(h.all()).toContain("failed");
   });
 
+  it.each(["retired", "destroy_requested"])("exits 1 when the node reaches %s", async (status) => {
+    const h = harness([
+      { status: 202, body: { id: "n7", status: "queued" } },
+      { status: 200, body: { id: "n7", status: "waiting_for_ip" } },
+      { status: 200, body: { id: "n7", status } },
+    ]);
+    expect(await runNode(CREATE_ARGS, h.io, h.deps)).toBe(1);
+    expect(h.calls).toHaveLength(3);
+    expect(h.all()).toContain("n7");
+    expect(h.all()).toContain(status);
+  });
+
   it("exits 1 with the id and last status after the time limit", async () => {
     const h = harness(
       [

@@ -9,7 +9,7 @@ export const CONSOLE_CONFIG_MISSING =
 export const NODE_READY_TIMEOUT_MS = 15 * 60 * 1000;
 export const NODE_POLL_INTERVAL_MS = 5000;
 
-const FAILURE_STATUSES = new Set(["failed", "error", "errored", "destroyed", "destroying", "deleted", "terminated"]);
+const FAILURE_STATUSES = new Set(["failed", "destroy_requested", "destroying", "destroyed", "retired"]);
 
 export type ConsoleKey = "AGRO_CONSOLE_URL" | "AGRO_CONSOLE_TOKEN";
 
