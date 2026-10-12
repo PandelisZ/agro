@@ -7,4 +7,4 @@ const [guardFixture, guardRunner] = await Promise.all([
 process.argv[1] = entry;
 
 export const { ARMS, DEFAULT_AGENTS, armInstructions } = guardFixture;
-export const { MAX_BUDGET_USD, MODEL, childEnv, claudeArgs, hashResponse, parseClaudeOutput } = guardRunner;
+export const { MAX_BUDGET_USD, MODEL, SPLIT, TRIAL_TIMEOUT_MS, childEnv, claudeArgs, hashResponse, parseClaudeOutput } = guardRunner;
