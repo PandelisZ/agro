@@ -93,8 +93,8 @@ git -C "$PROJECT" worktree list --porcelain
 
 If status is non-empty, stop and classify each path. Preserve intentional work
 by committing it on the project branch, or by making an explicit patch/backup;
-discard only after the owner confirms. A project clone with dirty, unclassified
-work is not a target for `rm -rf`.
+discard only after the owner confirms. Do not use `rm -rf` to remove a project
+clone with dirty, unclassified work.
 
 ## DETECT BASE
 
