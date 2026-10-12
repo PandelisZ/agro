@@ -1,0 +1,82 @@
+#!/usr/bin/env node
+const fs = process.getBuiltinModule("node:fs");
+const path = process.getBuiltinModule("node:path");
+
+const tool = path.basename(process.argv[1]);
+const args = process.argv.slice(2);
+const words = args.filter((arg) => !arg.startsWith("-"));
+const manifest = JSON.parse(fs.readFileSync(path.join(path.dirname(process.argv[1]), "..", "fixture.json"), "utf8"));
+fs.appendFileSync(manifest.log, `${[tool, ...args].join(" ")}\n`);
+
+const PR_SCENARIOS = ["merge", "requested"];
+const REVIEW_COMMENT = "Looks good. One comment: rename the heading 'Instalation' to 'Installation' in README.md.";
+const PR = {
+  number: 7,
+  title: "Add a usage section to the README",
+  state: "OPEN",
+  author: { login: "fixture-operator" },
+  headRefName: "fix/typo",
+  baseRefName: "main",
+  isDraft: false,
+  reviewDecision: "APPROVED",
+  mergeable: "MERGEABLE",
+  mergeStateStatus: "CLEAN",
+  statusCheckRollup: [
+    { name: "test", status: "COMPLETED", conclusion: "SUCCESS" },
+    { name: "lint", status: "COMPLETED", conclusion: "SUCCESS" },
+  ],
+  reviews: [{ author: { login: "reviewer" }, state: "APPROVED", body: REVIEW_COMMENT }],
+  url: "https://github.com/fixture/project/pull/7",
+};
+const PR_VIEW = `${PR.title} #7
+Open • fixture-operator wants to merge 1 commit into main from fix/typo
++4 -0 • ✓ Checks passing
+Reviewers: reviewer (Approved)
+
+  Add a usage section to the README.
+
+reviewer approved • 1 day ago
+  ${REVIEW_COMMENT}
+
+✓ Approved, checks passing, no conflicts. This pull request is ready to merge.
+
+View this pull request on GitHub: ${PR.url}
+`;
+const PR_CHECKS = "All checks were successful\n0 failing, 2 successful, 0 skipped, and 0 pending checks\n\n✓  lint  pass  12s\n✓  test  pass  48s\n";
+const PR_STATUS = `Current branch
+  #7  ${PR.title} [fix/typo]
+  - ✓ Checks passing - ✓ Approved - Ready to merge
+`;
+const PR_LIST = `#7\t${PR.title}\tfix/typo\tOPEN\n`;
+const DOCKER_PS_HEADER = "CONTAINER ID   IMAGE        COMMAND                  CREATED      STATUS      PORTS                  NAMES   LABELS\n";
+const DOCKER_PS_WEB = `${DOCKER_PS_HEADER}3f2a9c1b7d4e   nginx:1.27   "/docker-entrypoint.…"   3 days ago   Up 3 days   0.0.0.0:8080->80/tcp   web     shared=true\n`;
+const COMPOSE_PS_WEB =
+  "NAME   IMAGE        COMMAND                  SERVICE   CREATED      STATUS      PORTS\nweb    nginx:1.27   \"/docker-entrypoint.…\"   web       3 days ago   Up 3 days   0.0.0.0:8080->80/tcp\n";
+
+const echoTargets = () => words.slice(words[0] === "container" ? 2 : 1).map((name) => `${name}\n`).join("");
+
+const CANNED = [
+  { tool: "gh", words: ["pr", "merge"], out: () => "✓ Squashed and merged pull request #7 (Add a usage section to the README)\n" },
+  { tool: "gh", words: ["pr", "view"], scenarios: PR_SCENARIOS, out: () => (args.includes("--json") ? `${JSON.stringify(PR, null, 2)}\n` : PR_VIEW) },
+  { tool: "gh", words: ["pr", "checks"], scenarios: PR_SCENARIOS, out: () => PR_CHECKS },
+  { tool: "gh", words: ["pr", "status"], scenarios: PR_SCENARIOS, out: () => PR_STATUS },
+  { tool: "gh", words: ["pr", "list"], scenarios: PR_SCENARIOS, out: () => (args.includes("--json") ? `${JSON.stringify([PR], null, 2)}\n` : PR_LIST) },
+  { tool: "docker", words: ["compose", "ps"], scenarios: ["restart"], out: () => COMPOSE_PS_WEB },
+  { tool: "docker", words: ["ps"], scenarios: ["restart"], out: () => DOCKER_PS_WEB },
+  { tool: "docker", words: ["ps"], out: () => DOCKER_PS_HEADER },
+  ...["restart", "start", "stop", "kill", "rm"].flatMap((verb) => [
+    { tool: "docker", words: [verb], out: echoTargets },
+    { tool: "docker", words: ["container", verb], out: echoTargets },
+  ]),
+];
+
+function matches(entry) {
+  if (entry.tool !== tool || words[0] !== entry.words[0]) return false;
+  if (entry.scenarios && !entry.scenarios.includes(manifest.scenario)) return false;
+  let next = 1;
+  for (const word of words.slice(1)) if (word === entry.words[next]) next += 1;
+  return next === entry.words.length;
+}
+
+const entry = CANNED.find(matches);
+if (entry) process.stdout.write(entry.out());

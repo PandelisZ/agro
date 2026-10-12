@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import { appendFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { ARCHIVE_FILES, ARMS, DEFAULT_SCENARIO, SCENARIOS, buildFixture, caseIdFor, fixtureId, scenarioOf } from "./build-fixture.mjs";
@@ -167,7 +168,7 @@ async function main(argv) {
   return 0;
 }
 
-if (path.basename(process.argv[1] || "") === "run.mjs") {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;
