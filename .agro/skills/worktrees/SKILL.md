@@ -130,6 +130,7 @@ DESC=short-desc
 BRANCH="$PREFIX/$ISSUE-$DESC"
 mkdir -p "$WORKTREES_ROOT"
 git worktree add -b "$BRANCH" "$WORKTREES_ROOT/$BRANCH" "$BASE"
+[ -f "$WORKTREES_ROOT/$BRANCH/package.json" ] && (cd "$WORKTREES_ROOT/$BRANCH" && pnpm install --frozen-lockfile)
 ```
 
 ## CREATE — existing branch
@@ -138,6 +139,7 @@ git worktree add -b "$BRANCH" "$WORKTREES_ROOT/$BRANCH" "$BASE"
 BRANCH=feat/42-short-desc
 mkdir -p "$WORKTREES_ROOT"
 git worktree add "$WORKTREES_ROOT/$BRANCH" "$BRANCH"
+[ -f "$WORKTREES_ROOT/$BRANCH/package.json" ] && (cd "$WORKTREES_ROOT/$BRANCH" && pnpm install --frozen-lockfile)
 ```
 
 ## LIST — all worktrees + age + PR status

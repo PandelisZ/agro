@@ -147,6 +147,8 @@ git worktree add -b <prefix>/<issue#>-<short-desc> \
   "$WORKTREES_ROOT/<prefix>/<issue#>-<short-desc>" $BASE            # new branch off $BASE
 ```
 
+A new worktree has no `node_modules`. After `git worktree add`, when the new worktree has a `package.json`, run `pnpm install --frozen-lockfile` in the new worktree.
+
 Example path: `.worktrees/feat/42-slack-thread-replies`
 
 Cleanup: `git worktree remove "$WORKTREES_ROOT/<branch>"`.
