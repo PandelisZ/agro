@@ -1,0 +1,120 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "feat/1432-agro-node-verbs",
+  "description": "`agro node` verbs for console sandbox nodes",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Resolve the console URL and API key",
+      "description": "As an operator, I want `agro` to find the console URL and API key so that each `agro node` verb can call the console API.",
+      "acceptanceCriteria": [
+        "`SECRET_KEYS` in `.agro/cli/src/lib/secrets.ts` contains `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN`.",
+        "`COMPOSE_SECRET_KEYS` does not contain `AGRO_CONSOLE_URL` or `AGRO_CONSOLE_TOKEN`.",
+        "When the process environment sets a key, the resolver uses the environment value. Otherwise the resolver uses `readSecret` on the project root.",
+        "When either value is missing, each `agro node` verb exits 1 and prints `set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>`.",
+        "The resolver never prints the token.",
+        "A test in `.agro/cli/src/__tests__/node.test.ts` covers the environment value, the `.env` fallback, and the missing-value error."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/lib/secrets.ts",
+        ".agro/cli/src/commands/node.ts",
+        ".agro/cli/src/__tests__/node.test.ts"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Add `agro node create`",
+      "description": "As an operator, I want `agro node create` to provision a sandbox node and wait for `running` so that I get an SSH command in one step.",
+      "acceptanceCriteria": [
+        "`agro node create --spec <spec> --ssh-key <uuid> [--ssh-key <uuid>] [--name <name>]` sends `POST <AGRO_CONSOLE_URL>/api/nodes` with `Authorization: Bearer <token>` and body `{\"profile\":\"sandbox\",\"spec\":...,\"sshKeyIds\":[...]}`.",
+        "After HTTP 202, the verb polls `GET /api/nodes/<id>` until the status is `running` or a failure status, for at most 15 minutes.",
+        "When the node reaches `running`, the verb prints the node id, the status, and `ssh sandbox@<ipv4>`, then exits 0.",
+        "When the node reaches a failure status or the 15-minute limit passes, the verb prints the node id and the last status, then exits 1.",
+        "When the API returns a status of 400 or higher, the verb prints the HTTP status and the `code` field, then exits 1.",
+        "`--json` prints one JSON object with `id`, `status`, and `ssh`.",
+        "`.agro/cli/src/__tests__/node.test.ts` covers each criterion above against a stub `fetch`."
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/cli/src/commands/node.ts",
+        ".agro/cli/src/cli.ts",
+        ".agro/cli/src/__tests__/node.test.ts"
+      ]
+    },
+    {
+      "id": "US-003",
+      "title": "Add `agro node list` and `agro node delete`",
+      "description": "As an operator, I want to list and delete console nodes from `agro` so that I can clean up sandbox nodes without the browser.",
+      "acceptanceCriteria": [
+        "`agro node list [--json]` sends `GET /api/nodes` and prints one row per node: id, name, profile, status, and IPv4.",
+        "`agro node delete <id> [--yes]` asks for confirmation unless `--yes` is present, then sends `DELETE /api/nodes/<id>`.",
+        "When `DELETE` returns 403, the verb prints `destroy needs the admin role in agro-console` and exits 1.",
+        "`.agro/cli/src/__tests__/node.test.ts` covers list, delete, the confirmation, and the 403 message."
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-002"
+      ],
+      "files": [
+        ".agro/cli/src/commands/node.ts",
+        ".agro/cli/src/__tests__/node.test.ts"
+      ]
+    },
+    {
+      "id": "US-004",
+      "title": "Document the `agro node` verbs",
+      "description": "As an operator, I want the verb reference to list `agro node` so that I can find the verbs and the configuration.",
+      "acceptanceCriteria": [
+        "`docs/lifecycle-commands.md` lists `agro node create`, `agro node list`, and `agro node delete` in the verb table.",
+        "`docs/lifecycle-commands.md` has a section that names `AGRO_CONSOLE_URL`, `AGRO_CONSOLE_TOKEN`, and the `agro secret set` fallback.",
+        "The section states that `agro node` manages remote console VMs, not local Docker sandboxes.",
+        "`agro --help` lists `agro node`.",
+        "The docs reference tests in `.agro/cli/src/__tests__/docs-reference.test.ts` exit 0."
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-003"
+      ],
+      "files": [
+        "docs/lifecycle-commands.md",
+        ".agro/cli/src/cli.ts",
+        ".agro/cli/src/__tests__/docs-reference.test.ts",
+        "CHANGELOG.md"
+      ]
+    },
+    {
+      "id": "US-005",
+      "title": "Record manual review evidence",
+      "description": "As the advisor, I want a transcript of each verb against a live console so that the PR proves the behavior end to end.",
+      "acceptanceCriteria": [
+        "With operator approval, the agent runs `agro node create`, `agro node list`, and `agro node delete` against the dev console with an `mfc_` token.",
+        "The agent writes the transcript, with the token redacted, to `.agro/tasks/agro-node-verbs/evidence/manual-review.md`.",
+        "Over SSH on the node, `command -v agro code-server` prints nothing.",
+        "The agent destroys each node that the review created."
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-004"
+      ],
+      "files": [
+        ".agro/tasks/agro-node-verbs/evidence/"
+      ]
+    }
+  ]
+}
