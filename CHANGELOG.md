@@ -11,6 +11,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 ### Added
 - Add `/behavioral-training` to analyze Langfuse sessions in resumable, operator-reviewed stages and publish reviewed evaluation datasets on request, and vendor the official Langfuse skill ([#1414](https://github.com/mifunedev/agro/pull/1414)).
 
+### Changed
+- Forbid agents from reaching a hook-blocked effect through another command, script, or tool in root `AGENTS.md` ([#1415](https://github.com/mifunedev/agro/issues/1415)).
+
 ### Removed
 - Remove the `prompt-miner` skill; `/behavioral-training` replaces it, and old prompt-miner rankings do not carry over as labels ([#1414](https://github.com/mifunedev/agro/pull/1414)).
 
