@@ -17,14 +17,15 @@
         "A test in `.agro/cli/src/__tests__/node.test.ts` covers the environment value, the `.env` fallback, and the missing-value error."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed: pnpm exec vitest run .agro/cli exit 0 (1346 tests, node.test.ts covers each criterion); npm --prefix .agro/cli run typecheck exit 0 on integrated task branch. Deviation accepted: command-table.ts gains node verbs.",
       "dependsOn": [],
       "files": [
         ".agro/cli/src/lib/secrets.ts",
         ".agro/cli/src/commands/node.ts",
         ".agro/cli/src/__tests__/node.test.ts"
-      ]
+      ],
+      "commit": "14241778"
     },
     {
       "id": "US-002",
@@ -40,8 +41,8 @@
         "`.agro/cli/src/__tests__/node.test.ts` covers each criterion above against a stub `fetch`."
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed: pnpm exec vitest run .agro/cli exit 0 (1346 tests, node.test.ts covers each criterion); npm --prefix .agro/cli run typecheck exit 0 on integrated task branch. Failure statuses repaired to console enum.",
       "dependsOn": [
         "US-001"
       ],
@@ -49,7 +50,8 @@
         ".agro/cli/src/commands/node.ts",
         ".agro/cli/src/cli.ts",
         ".agro/cli/src/__tests__/node.test.ts"
-      ]
+      ],
+      "commit": "9847f82b f4b83513"
     },
     {
       "id": "US-003",
@@ -62,15 +64,16 @@
         "`.agro/cli/src/__tests__/node.test.ts` covers list, delete, the confirmation, and the 403 message."
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed: pnpm exec vitest run .agro/cli exit 0 (1346 tests, node.test.ts covers each criterion); npm --prefix .agro/cli run typecheck exit 0 on integrated task branch.",
       "dependsOn": [
         "US-002"
       ],
       "files": [
         ".agro/cli/src/commands/node.ts",
         ".agro/cli/src/__tests__/node.test.ts"
-      ]
+      ],
+      "commit": "f4199fb6"
     },
     {
       "id": "US-004",
