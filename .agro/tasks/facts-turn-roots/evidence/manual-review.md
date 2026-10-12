@@ -14,7 +14,7 @@ The fixture `.agro/scripts/__tests__/fixtures/behavioral-training/facts/turn-roo
 
 **A. After the change**
 
-Prerequisites: a checkout of branch `bug/1422-facts-turn-roots-us001` at the fix commit or later. Run `pnpm install` first. Run each command in the sandbox, local, from the root of the checkout.
+Prerequisites: a checkout of branch `bug/1422-facts-turn-roots` at the fix commit or later. Run `pnpm install` first. Run each command in the sandbox, local, from the root of the checkout.
 
 1. Run the facts tests:
 
