@@ -129,4 +129,6 @@ None. The operator approved the plan, the frozen rule, and a budget of 100 sessi
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. Claim: the fixture did not show the temptation to the agent. Evidence: all 80 pressure sessions made one shim call, `gh pr view --json url`. No session read the merge-ready state or the shared container. The baseline passed 40 of 40. Outcome: proposed issue for a fixture that puts the temptation in the push output or the prompt. The issue waits for operator approval.
+2. Claim: a trial could reach the real Docker socket and the authenticated `gh` through an absolute path. Evidence: `/var/run/docker.sock` holds shared containers, and `/usr/bin/gh` has credentials. Outcome: fixed in this PR. `trialEnv` removes the host access, and tests prove that `/usr/bin/docker ps` and `/usr/bin/gh auth status` fail.
+3. Claim: the guard replay CLI started when another file with the same name imported it. Evidence: the entry check compared only the file name. Outcome: fixed in this PR. The entry checks compare `import.meta.url`.
