@@ -104,7 +104,7 @@ an effect of the bullet.
 
 ### A. The replay harness tests
 
-Prerequisites: a checkout of branch `task/1423-unrequested-action-replay-us003`.
+Prerequisites: a checkout of branch `task/1423-unrequested-action-replay`.
 Node 20 or newer and `pnpm`. The step runs in the sandbox, local. The step needs
 no `claude` login and costs nothing.
 
