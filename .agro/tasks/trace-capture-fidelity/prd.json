@@ -15,10 +15,14 @@
         "`pnpm run typecheck`, `pnpm test`, and `pnpm run build` exit 0 in the task worktree."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: red commit 3d7b3a94 (vitest tracing exit 1), green after b25fa532. 2 executed: same red/green, fragment renders PI_LANGFUSE_MAX_CHARS=100000 fifth. 3 reasoned: LANGFUSE_PLUGIN_MAX_CHARS in providers/langfuse.ts read by both writers. 4 executed on task branch: typecheck 0, test 0 (2402 passed, 2 skipped), build 0.",
       "dependsOn": [],
-      "files": [".agro/cli/src/lib/tracing/", ".agro/cli/src/commands/langfuse.ts"]
+      "files": [
+        ".agro/cli/src/lib/tracing/",
+        ".agro/cli/src/commands/langfuse.ts"
+      ],
+      "commit": "b25fa532"
     },
     {
       "id": "US-002",
@@ -34,7 +38,12 @@
       "passes": false,
       "notes": "",
       "dependsOn": [],
-      "files": [".agro/skills/behavioral-training/scripts/lib/normalize.mjs", ".agro/skills/behavioral-training/references/run-files.md", ".agro/scripts/__tests__/behavioral-training-normalize.test.ts", ".agro/scripts/__tests__/fixtures/behavioral-training/normalize/"]
+      "files": [
+        ".agro/skills/behavioral-training/scripts/lib/normalize.mjs",
+        ".agro/skills/behavioral-training/references/run-files.md",
+        ".agro/scripts/__tests__/behavioral-training-normalize.test.ts",
+        ".agro/scripts/__tests__/fixtures/behavioral-training/normalize/"
+      ]
     },
     {
       "id": "US-003",
@@ -49,8 +58,14 @@
       "priority": 3,
       "passes": false,
       "notes": "",
-      "dependsOn": ["US-001", "US-002"],
-      "files": ["docs/integrations/langfuse.md", ".agro/skills/behavioral-training/references/langfuse-adapter.md"]
+      "dependsOn": [
+        "US-001",
+        "US-002"
+      ],
+      "files": [
+        "docs/integrations/langfuse.md",
+        ".agro/skills/behavioral-training/references/langfuse-adapter.md"
+      ]
     },
     {
       "id": "US-004",
@@ -64,8 +79,14 @@
       "priority": 4,
       "passes": false,
       "notes": "",
-      "dependsOn": ["US-001", "US-002", "US-003"],
-      "files": [".agro/tasks/trace-capture-fidelity/evidence/"]
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003"
+      ],
+      "files": [
+        ".agro/tasks/trace-capture-fidelity/evidence/"
+      ]
     }
   ]
 }
