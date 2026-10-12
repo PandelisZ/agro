@@ -59,7 +59,7 @@ Verified facts:
 - The operator approved 100000 as the limit.
 - The Claude Code plugin opens each "Conversational Turn" root span under a non-recording carrier span with a random id. The plugin never exports the carrier (`hooks/langfuse_hook.py:3076-3102`, `3162`). Langfuse marks the root with `isRootObservation: true` and keeps the dangling `parentObservationId`.
 - A metadata-only read over 2026-10-08 to 2026-10-11 returned 4025 observations in 203 traces. All 193 root observations had a parent id that was not stored. These 193 rows are 193 of the 313 dangling references in the window.
-- The other 120 dangling references are on non-root rows. The probe that classifies them was blocked by a hook. Their cause is an open question.
+- A second metadata-only probe, approved by the operator, classified the 120 non-root references. 11 point at a root span that started before the window. 109 point at 9 turn roots that Langfuse never stored. The plugin saves the root span id before the flush, and caps the flush at 5 seconds (`hooks/langfuse_hook.py:3478-3502`). When the root flush drops, later firings of the turn attach children to the lost root.
 
 Approach: write the limit through the existing tracing writers, skip root parents in the adapter, and document both. No upstream issue is necessary for the root parent, because the plugin and the Langfuse API both document it.
 
@@ -116,7 +116,7 @@ The fragment stays at mode 0600. No new storage.
 
 ## Open Questions
 
-1. The cause of the 120 non-root dangling references is not known. Candidates are parents that started before the window and parents in another session. The CC Safety Net hook failed closed and blocked a second metadata-only probe. The operator must approve a rerun.
+1. The plugin code calls the dropped-flush loss of a turn root an accepted limitation. The operator decides whether to file an upstream report.
 2. The re-inventory runs after new traces accumulate. The date is not known.
 
 ## Acceptance Criteria
