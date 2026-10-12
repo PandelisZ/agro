@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1417-worktree-test-setup",
+  "description": "Worktree test setup: state pnpm install --frozen-lockfile after each git worktree add in the git, worktrees, and delegate skills.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "State the install step in the worktree procedures",
+      "description": "As an agent, I want each worktree procedure to name the dependency install so that `pnpm test` and `pnpm run typecheck` pass in a new worktree.",
+      "acceptanceCriteria": [
+        "`.agro/skills/git/SKILL.md` § Worktrees states: after `git worktree add`, run `pnpm install --frozen-lockfile` in the new worktree when the worktree has a `package.json`.",
+        "`.agro/skills/worktrees/SKILL.md` § CREATE — new branch and § CREATE — existing branch include the same install command after `git worktree add`.",
+        "`.agro/skills/delegate/SKILL.md` § Waves step 3 tells the advisor to run the install in each worker worktree before dispatch.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh` exits 0 on each changed file.",
+        "In a new worktree, `pnpm install --frozen-lockfile`, then `pnpm run typecheck` and `pnpm test` exit 0."
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/git/SKILL.md",
+        ".agro/skills/worktrees/SKILL.md",
+        ".agro/skills/delegate/SKILL.md"
+      ]
+    }
+  ]
+}
