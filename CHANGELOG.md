@@ -13,6 +13,7 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ### Changed
 - Raise the Claude Code and Pi Langfuse field capture limit that `agro langfuse apply` writes from 20000 to 100000 characters ([#1421](https://github.com/mifunedev/agro/pull/1421)).
+- Run `pnpm install --frozen-lockfile` in each new git worktree in the `/git`, `/worktrees`, and `/delegate` procedures so that tests pass there ([#1426](https://github.com/mifunedev/agro/pull/1426)).
 - Forbid agents from reaching a hook-blocked effect through another command, script, or tool in root `AGENTS.md` ([#1415](https://github.com/mifunedev/agro/issues/1415)).
 
 ### Removed

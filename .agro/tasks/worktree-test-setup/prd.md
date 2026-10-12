@@ -68,4 +68,4 @@ None.
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. Claim: `.agro/skills/worktrees/SKILL.md` held 9 STE findings before this task. Evidence: `ste-check.sh` exited 1 on the committed file. Outcome: fixed in this PR, because the PR changes the file and its acceptance criterion requires exit 0.
