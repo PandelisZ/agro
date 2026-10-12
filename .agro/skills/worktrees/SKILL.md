@@ -24,7 +24,7 @@ follows it too, in `projects/<owner>/<repo>/.worktrees/`.
 `~/harness` and `$PROJECTS_ROOT/<owner>/<repo>` are different Git
 boundaries. The parent harness ignores the latter; a project clone's files are
 never changes to the harness. Classify changes before committing, resetting, or
-removing anything. A dirty checkout is not disposable merely because it lives
+removing a file, branch, or worktree. A dirty checkout is not disposable merely because it lives
 under `.worktrees/`.
 
 ### `~/harness` — harness control plane
@@ -47,8 +47,8 @@ under `.worktrees/`.
 - an explicit operator-local setting or a tracked edit that was reviewed and
   rejected.
 
-Do not reset a tracked source/config/doc change just because it is unstaged, and
-do not delete an untracked file before inspecting it. For root state, inspect
+An unstaged tracked source/config/doc change is not a reason to reset that change.
+Do not delete an untracked file before inspecting it. For root state, inspect
 both index and worktree changes:
 
 ```bash
@@ -59,8 +59,8 @@ git -C ~/harness diff --cached --name-status
 
 Use `git restore <path>` only for identified files. Preview cleanup with
 `git clean -nd` (or `git clean -ndX` for ignored files); route destructive
-`reset`/`clean` operations through `.agro/scripts/git-maintenance.sh` as required
-by `/git`.
+`reset`/`clean` operations through `.agro/scripts/git-maintenance.sh`, as the
+`/git` skill requires.
 
 ### `$PROJECTS_ROOT/<owner>/<repo>` — independent project clone
 
@@ -77,9 +77,9 @@ the harness remote.
 **Reset/remove in the project repository** only generated output, dependency
 and build caches, logs, local secret/config files, nested worktree state after
 confirming no child worktree is active, or changes the owner explicitly
-abandons. An active nested worktree is operational state: preserve it, do not
-add its path to the parent clone, and inspect the child repository separately.
-Do not blanket-reset source or docs because a clone is being cleaned.
+abandons. An active nested worktree is operational state. Preserve the nested
+worktree, do not add its path to the parent clone, and inspect the child
+repository separately. When you clean a clone, do not blanket-reset source or docs.
 
 Before removing or resetting a project clone:
 
@@ -94,14 +94,14 @@ git -C "$PROJECT" worktree list --porcelain
 If status is non-empty, stop and classify each path. Preserve intentional work
 by committing it on the project branch, or by making an explicit patch/backup;
 discard only after the owner confirms. A project clone with dirty, unclassified
-work must not be removed with `rm -rf`.
+work is not a target for `rm -rf`.
 
 ## DETECT BASE
 
 Run first. Every create/remove op needs `$BASE` and `$WORKTREES_ROOT`.
 
 `$WORKTREES_ROOT` is always `.worktrees/` inside **the repository you are standing
-in** — run this from the harness root for harness branches, or from
+in** — run the DETECT BASE commands from the harness root for harness branches, or from
 `projects/<owner>/<repo>/` to cut a worktree of that project. `agro-path` resolves the
 fixed root and only exists at the harness root, so the project case
 falls through to the repository toplevel.
@@ -162,6 +162,7 @@ Main checkout has loose files. Don't stash. Don't switch.
 # 1. Cut worktree off base
 BRANCH=feat/42-my-work
 git worktree add -b "$BRANCH" "$WORKTREES_ROOT/$BRANCH" "$BASE"
+[ -f "$WORKTREES_ROOT/$BRANCH/package.json" ] && (cd "$WORKTREES_ROOT/$BRANCH" && pnpm install --frozen-lockfile)
 
 # 2. Copy files in
 cp path/to/file1 path/to/file2 "$WORKTREES_ROOT/$BRANCH/<destination>/"
@@ -206,7 +207,7 @@ git worktree prune
 
 ### Forced removal under the cc-safety-net guard
 
-`git worktree remove --force` (and `git branch -D`) are denied inline by cc-safety-net. In agent (hook-mediated) contexts route them through the file-invoked shim:
+cc-safety-net denies inline `git worktree remove --force` (and `git branch -D`). In agent (hook-mediated) contexts, route these commands through the file-invoked shim:
 
 ```bash
 bash .agro/scripts/git-maintenance.sh worktree-remove "$WORKTREES_ROOT/$BRANCH"
