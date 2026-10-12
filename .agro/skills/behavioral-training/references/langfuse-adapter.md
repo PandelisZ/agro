@@ -403,7 +403,34 @@ The plugin does this by design.
 
 A metadata-only read over 2026-10-08 to 2026-10-11 found such a parent on all
 193 root observations. These rows are 193 of the 313 parent ids that Langfuse
-did not store. The cause of the other 120 is not confirmed.
+did not store.
+
+A second metadata-only read over the same window classified the other 120
+references. They point at 10 distinct parents.
+
+- 11 references point at a parent that exists. The parent is a root span of
+  the same session, and the span started before the read window. Such a
+  reference is an effect of the window edge, not a gap. `normalize` reads
+  whole sessions, so the stage does not see this case.
+- 109 references point at 9 parents that are absent from their whole trace.
+  Each of the 9 traces has the name "Claude Code Turn" and holds no root
+  observation. Each parent id is a 16-hex span id.
+
+The plugin can emit one turn over more than one hook firing. The first firing
+opens the "Conversational Turn" root span and stores the span id in the
+progress of the turn (`hooks/langfuse_hook.py` lines 3226 to 3236). Each
+later firing attaches its children to the stored id through a carrier (lines
+3238 to 3245). The plugin saves the progress before the SDK flush. The plugin
+limits the flush and the shutdown to 5 seconds on a daemon thread (lines 3478
+to 3502). The plugin code names this a known and accepted limitation (lines
+3478 to 3481). If the flush of the root span fails, Langfuse never stores the
+root. Each later firing of that turn then produces children of a parent that
+Langfuse does not have. This affected 9 of approximately 200 turns in the
+window, approximately 4 percent.
+
+No AGRO setting fixes this, because the plugin has no setting for the flush
+limit. `normalize` keeps each such parent as a `parent` gap, because the root
+span of the turn and its input and output are missing.
 
 Thus `normalize` ignores the parent of each row with `isRootObservation: true`.
 That parent is not a gap, and the stage does no trace lookup for it. The parent
