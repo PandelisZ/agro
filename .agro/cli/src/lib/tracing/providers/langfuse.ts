@@ -13,11 +13,14 @@ export interface LangfuseFragmentInput extends LangfuseCredentials {
   readonly environment: string;
 }
 
+export const LANGFUSE_PLUGIN_MAX_CHARS = 100000;
+
 export const LANGFUSE_FRAGMENT_KEYS = [
   "LANGFUSE_PUBLIC_KEY",
   "LANGFUSE_SECRET_KEY",
   "LANGFUSE_BASE_URL",
   "LANGFUSE_TRACING_ENVIRONMENT",
+  "PI_LANGFUSE_MAX_CHARS",
 ] as const;
 
 export type LangfuseFragmentKey = (typeof LANGFUSE_FRAGMENT_KEYS)[number];
@@ -49,6 +52,7 @@ export function renderLangfuseFragment(input: LangfuseFragmentInput): string {
     LANGFUSE_SECRET_KEY: input.secretKey,
     LANGFUSE_BASE_URL: input.baseUrl,
     LANGFUSE_TRACING_ENVIRONMENT: input.environment,
+    PI_LANGFUSE_MAX_CHARS: String(LANGFUSE_PLUGIN_MAX_CHARS),
   };
   return LANGFUSE_FRAGMENT_KEYS.map((key) => `${key}=${quoteFragmentValue(key, values[key])}\n`).join("");
 }

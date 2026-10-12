@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { LANGFUSE_PLUGIN_MAX_CHARS } from "./providers/langfuse.js";
 import {
   PRIVATE_FILE_MODE,
   isPlainObject,
@@ -35,6 +36,7 @@ export const claudeCodeTracingWriter: TracingWriter = (home, settings) => {
       ...env,
       LANGFUSE_BASE_URL: settings.baseUrl,
       LANGFUSE_TRACING_ENVIRONMENT: settings.environment,
+      CC_LANGFUSE_MAX_CHARS: String(LANGFUSE_PLUGIN_MAX_CHARS),
     },
   };
   return writeTextIfChanged(path, renderJson(next));
