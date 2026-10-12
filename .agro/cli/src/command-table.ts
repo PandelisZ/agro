@@ -9,6 +9,7 @@ export const WORKSPACE_SUBCOMMANDS = ["create", "list"] as const;
 export const HARNESS_SUBCOMMANDS = ["list", "install", "status", "uninstall"] as const;
 export const TOOL_SUBCOMMANDS = ["list", "install", "status", "uninstall"] as const;
 export const EGRESS_VERBS = ["log", "reload"] as const;
+export const NODE_VERBS = ["create"] as const;
 
 export type ConfigVerb = (typeof CONFIG_VERBS)[number];
 export type ConfigIntegration = (typeof CONFIG_INTEGRATIONS)[number];
@@ -39,5 +40,6 @@ export const AGRO_COMMANDS: Readonly<Record<string, readonly string[] | null>> =
   tool: TOOL_SUBCOMMANDS,
   gateway: null,
   egress: EGRESS_VERBS,
+  node: NODE_VERBS,
   ...Object.fromEntries(composeVerbs().map((verb) => [verb, null])),
 });
