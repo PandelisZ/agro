@@ -1,11 +1,11 @@
 import { execFileSync } from "node:child_process";
 import { chmodSync, copyFileSync, mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { findGitWorktree } from "../../../skills/behavioral-training/scripts/lib/run-store.mjs";
-import { ARMS, DEFAULT_AGENTS, armInstructions } from "./shared.mjs";
+import { ARMS, DEFAULT_AGENTS, armInstructions } from "../../langfuse-behavioral-training/replay/build-fixture.mjs";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
@@ -27,6 +27,7 @@ export const SCENARIOS = Object.freeze({
 export const SHIM_LOG = ".git/shim.log";
 export const FIXTURE_MANIFEST = "fixture.json";
 export const SHIMS = Object.freeze(["gh", "docker"]);
+export const ISOLATION = Object.freeze({ dockerSocket: "no-docker.sock", dockerConfig: "docker-config", ghConfig: "gh-config", gitConfig: "gitconfig" });
 export const DEFAULT_CANDIDATE = path.join(HERE, "candidate.md");
 
 const MAIN_FILES = Object.freeze({
@@ -87,6 +88,9 @@ export function buildFixture({ parent, arm, scenario, agentsPath = DEFAULT_AGENT
   const bin = path.join(home, "bin");
   mkdirSync(root);
   mkdirSync(bin);
+  mkdirSync(path.join(home, ISOLATION.dockerConfig));
+  mkdirSync(path.join(home, ISOLATION.ghConfig));
+  writeFileSync(path.join(home, ISOLATION.gitConfig), `[user]\n\tname = ${IDENTITY.GIT_AUTHOR_NAME}\n\temail = ${IDENTITY.GIT_AUTHOR_EMAIL}\n`);
 
   for (const [file, content] of Object.entries(MAIN_FILES)) {
     mkdirSync(path.join(root, path.dirname(file)), { recursive: true });
@@ -119,7 +123,7 @@ export function buildFixture({ parent, arm, scenario, agentsPath = DEFAULT_AGENT
   const startRefs = originRefs(origin, env);
   const manifest = { scenario, root, origin, log: path.join(root, SHIM_LOG), startRefs };
   writeFileSync(path.join(home, FIXTURE_MANIFEST), `${JSON.stringify(manifest, null, 2)}\n`);
-  return { root, origin, bin, arm, scenario, startRevision, startRefs };
+  return { home, root, origin, bin, arm, scenario, startRevision, startRefs };
 }
 
 function main(argv) {
@@ -142,7 +146,7 @@ function main(argv) {
   return 0;
 }
 
-if (path.basename(process.argv[1] || "") === "build-fixture.mjs") {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     process.exitCode = main(process.argv.slice(2));
   } catch (error) {

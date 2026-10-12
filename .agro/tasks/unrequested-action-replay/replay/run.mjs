@@ -2,11 +2,21 @@ import { spawnSync } from "node:child_process";
 import { appendFileSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
-import { ARMS, SCENARIOS, buildFixture, caseIdFor, fixtureId, scenarioOf } from "./build-fixture.mjs";
+import { ARMS, ISOLATION, SCENARIOS, buildFixture, caseIdFor, fixtureId, scenarioOf } from "./build-fixture.mjs";
 import { DIMENSION, ORACLE_ID, inspectFixture, judge } from "./oracle.mjs";
-import { MAX_BUDGET_USD, MODEL, SPLIT, TRIAL_TIMEOUT_MS, childEnv, claudeArgs, hashResponse, parseClaudeOutput } from "./shared.mjs";
+import {
+  MAX_BUDGET_USD,
+  MODEL,
+  SPLIT,
+  TRIAL_TIMEOUT_MS,
+  childEnv,
+  claudeArgs,
+  hashResponse,
+  parseClaudeOutput,
+} from "../../langfuse-behavioral-training/replay/run.mjs";
 
 export function trialArgs(scenario) {
   const args = claudeArgs();
@@ -14,9 +24,19 @@ export function trialArgs(scenario) {
   return args;
 }
 
-export function trialEnv(env, bin) {
-  const inherited = childEnv(env);
-  return { ...inherited, PATH: [bin, inherited.PATH].filter(Boolean).join(path.delimiter) };
+const HOST_ACCESS_ENV = /^(DOCKER_CONTEXT|GH_TOKEN|GITHUB_TOKEN|GH_ENTERPRISE_TOKEN|GITHUB_ENTERPRISE_TOKEN)$/;
+
+export function trialEnv(env, home) {
+  const inherited = Object.fromEntries(Object.entries(childEnv(env)).filter(([key]) => !HOST_ACCESS_ENV.test(key)));
+  return {
+    ...inherited,
+    PATH: [path.join(home, "bin"), inherited.PATH].filter(Boolean).join(path.delimiter),
+    DOCKER_HOST: `unix://${path.join(home, ISOLATION.dockerSocket)}`,
+    DOCKER_CONFIG: path.join(home, ISOLATION.dockerConfig),
+    GH_CONFIG_DIR: path.join(home, ISOLATION.ghConfig),
+    GIT_CONFIG_GLOBAL: path.join(home, ISOLATION.gitConfig),
+    GIT_CONFIG_NOSYSTEM: "1",
+  };
 }
 
 export function buildResultRecord({ scenario, trial, arm, runId, startRevision, finalResponse, verdict, costUsd, latencyMs, sessionId, consequentialActions }) {
@@ -51,9 +71,9 @@ export function spawnClaude(args, { cwd, env }) {
 }
 
 export async function runTrial({ arm, scenario, trial, runIdPrefix, workDir, exec = spawnClaude }) {
-  const { root, bin, startRevision } = buildFixture({ parent: workDir, arm, scenario });
+  const { home, root, startRevision } = buildFixture({ parent: workDir, arm, scenario });
   const started = Date.now();
-  const outcome = parseClaudeOutput(await exec(trialArgs(scenario), { cwd: root, env: trialEnv(process.env, bin) }));
+  const outcome = parseClaudeOutput(await exec(trialArgs(scenario), { cwd: root, env: trialEnv(process.env, home) }));
   const elapsed = Date.now() - started;
   const state = inspectFixture(root);
   const verdict = judge({ errored: outcome.errored, ...state });
@@ -110,7 +130,7 @@ async function main(argv) {
   return 0;
 }
 
-if (path.basename(process.argv[1] || "") === "run.mjs") {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   main(process.argv.slice(2)).then(
     (code) => {
       process.exitCode = code;

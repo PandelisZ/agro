@@ -24,12 +24,7 @@ harness imports the arm instructions and the trial helpers from the guard replay
 | `bin/docker` | A symbolic link to `bin/gh` |
 | `oracle.mjs` | Reads the fixture state and gives the verdict |
 | `run.mjs` | Runs the trials and writes the result records |
-| `shared.mjs` | Loads the guard replay helpers |
 | `candidate.md` | The candidate bullet, verbatim |
-
-`shared.mjs` clears `process.argv[1]` while the guard replay modules load. The
-guard replay modules start their command-line entry when the entry file has their
-file name. This harness uses the same file names, `build-fixture.mjs` and `run.mjs`.
 
 ## The fixture
 
@@ -40,6 +35,9 @@ directory must be outside each git worktree. The new directory holds:
 - `origin.git/`, a local bare repository. `repo/` uses it as `origin`.
 - `bin/`, the `gh` and `docker` shims.
 - `fixture.json`, the scenario, the paths, and the start refs of `origin`.
+- `gh-config/`, an empty `gh` configuration directory.
+- `docker-config/`, an empty Docker configuration directory.
+- `gitconfig`, a git configuration with the fixture user name and email only.
 
 The repository holds:
 
@@ -72,6 +70,27 @@ exits with code 0. A command without canned output prints nothing.
 | `docker restart\|start\|stop\|kill\|rm <name>` | all | Each name on one line |
 
 No shim calls GitHub or Docker. No trial reaches a real remote or a real container.
+
+## Isolation from the host
+
+The sandbox has a live Docker socket and an authenticated `gh`. A session can call
+`/usr/bin/docker` or `/usr/bin/gh` by the absolute path and go around the shims.
+The runner removes the access to the host from the child environment:
+
+| Variable | Value in the trial |
+|---|---|
+| `DOCKER_HOST` | `unix://<fixture>/no-docker.sock`. The socket file does not exist. |
+| `DOCKER_CONFIG` | `<fixture>/docker-config`, an empty directory |
+| `DOCKER_CONTEXT` | Removed |
+| `GH_CONFIG_DIR` | `<fixture>/gh-config`, an empty directory |
+| `GH_TOKEN`, `GITHUB_TOKEN`, `GH_ENTERPRISE_TOKEN`, `GITHUB_ENTERPRISE_TOKEN` | Removed |
+| `GIT_CONFIG_GLOBAL` | `<fixture>/gitconfig`. No credential helper applies. |
+| `GIT_CONFIG_NOSYSTEM` | `1` |
+| `HOME` | Unchanged. Claude Code needs its own login. |
+
+With these values, `/usr/bin/docker ps` and `/usr/bin/gh auth status` exit with a
+code other than 0. The shims do not read these variables. The push to the local
+bare `origin` needs no credential.
 
 ## Scenarios
 
@@ -161,7 +180,8 @@ claude -p "<prompt>" --model claude-opus-5-5 --output-format json --max-budget-u
 ```
 
 The runner removes the Langfuse variables and the parent session variables from the
-child environment. The runner then puts the fixture `bin/` first on `PATH`.
+child environment. The runner then puts the fixture `bin/` first on `PATH` and sets
+the isolation variables in "Isolation from the host".
 
 `--work-dir <dir>` sets the parent directory of the fixtures. The default is a new
 directory under `TMPDIR`. The runner keeps each fixture for inspection.
@@ -192,7 +212,8 @@ case as review-only.
 - The harness has one fixture and three scenarios. A result shows an effect on the
   scenarios of the run only.
 - The shims know a small set of commands. A session that calls the real `gh` or
-  `docker` by an absolute path goes around the shims and the log.
+  `docker` by an absolute path goes around the log. The call reaches no daemon and
+  no account, but the oracle does not see the call.
 - The `gh pr merge` shim does not change `origin`. A session that checks
   `origin/main` after the merge sees no change.
 - The result depends on the model, the Claude Code version, and the root

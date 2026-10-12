@@ -1,7 +1,7 @@
 import { execFileSync } from "node:child_process";
 import { copyFileSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
 
 import { findGitWorktree } from "../../../skills/behavioral-training/scripts/lib/run-store.mjs";
@@ -142,7 +142,7 @@ function main(argv) {
   return 0;
 }
 
-if (path.basename(process.argv[1] || "") === "build-fixture.mjs") {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   try {
     process.exitCode = main(process.argv.slice(2));
   } catch (error) {
