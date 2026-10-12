@@ -392,6 +392,24 @@ window on each content read.
    `source` (`inventory` or `run`), and `splits`. The value holds metadata
    only.
 
+### Root parents
+
+The Claude Code plugin `langfuse-observability` 1.2.0 starts each
+"Conversational Turn" root span under a non-recording carrier span. The carrier
+has a random id, and the plugin never exports it (`hooks/langfuse_hook.py`
+lines 3076 to 3102 and line 3162). Langfuse marks the root span with
+`isRootObservation: true` and keeps the `parentObservationId` of the carrier.
+The plugin does this by design.
+
+A metadata-only read over 2026-10-08 to 2026-10-11 found such a parent on all
+193 root observations. These rows are 193 of the 313 parent ids that Langfuse
+did not store. The cause of the other 120 is not confirmed.
+
+Thus `normalize` ignores the parent of each row with `isRootObservation: true`.
+That parent is not a gap, and the stage does no trace lookup for it. The parent
+of a row without `isRootObservation: true` follows the steps in
+[parents in other sessions](#parents-in-other-sessions).
+
 ### Parents in other sessions
 
 One trace can hold observations of more than one session. On the dev
