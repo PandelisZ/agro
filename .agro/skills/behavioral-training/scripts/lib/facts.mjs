@@ -247,7 +247,7 @@ function programOf(command) {
 
 function isBoundary(event, block) {
   if (event.role === "tool") return false;
-  if (event.role === "user") return true;
+  if (event.role === "user" || event.isRootObservation === true) return true;
   return event.parentObservationId === null && event.traceId !== block.traceId && event.type !== "GENERATION";
 }
 
