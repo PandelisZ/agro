@@ -35,15 +35,16 @@
         "`pnpm test` exits 0 in the task worktree."
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: red commit 2f9cd503 (23 normalize tests failed), green after 46601623; root row adds no missing or crossSession entry and triggers no lookup. 2 executed: non-root rows with false and null keep parent gaps. 3 executed: event carries isRootObservation; run-files.md names it; ste-check exit 0. 4 executed on task branch: typecheck 0, test 0 (2404 passed, 2 skipped), build 0. Finding: facts.mjs:251 isBoundary misses Claude Code turn roots with a phantom parent; deferred to Close.",
       "dependsOn": [],
       "files": [
         ".agro/skills/behavioral-training/scripts/lib/normalize.mjs",
         ".agro/skills/behavioral-training/references/run-files.md",
         ".agro/scripts/__tests__/behavioral-training-normalize.test.ts",
         ".agro/scripts/__tests__/fixtures/behavioral-training/normalize/"
-      ]
+      ],
+      "commit": "46601623"
     },
     {
       "id": "US-003",
