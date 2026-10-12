@@ -431,6 +431,8 @@ window, approximately 4 percent.
 No AGRO setting fixes this, because the plugin has no setting for the flush
 limit. `normalize` keeps each such parent as a `parent` gap, because the root
 span of the turn and its input and output are missing.
+The upstream report is
+[langfuse/claude-observability-plugin#103](https://github.com/langfuse/claude-observability-plugin/issues/103).
 
 Thus `normalize` ignores the parent of each row with `isRootObservation: true`.
 That parent is not a gap, and the stage does no trace lookup for it. The parent
