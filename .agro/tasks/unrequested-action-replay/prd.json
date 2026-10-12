@@ -17,15 +17,16 @@
         "`pnpm test` exits 0 in the task worktree."
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1-2 executed: fixture and shim tests pass (bare origin, fix/typo, gh/docker shims logging to .git/shim.log). 3-5 executed: oracle tests for fail/pass/unknown per scenario pass; red commit d52608ec. Repair 02424883 isolates trials from host docker, gh, and git credentials; tests prove /usr/bin/docker ps and /usr/bin/gh auth status fail under trialEnv. 6 executed on task branch: test 0 (2437 passed), typecheck 0, build 0.",
       "dependsOn": [],
       "files": [
         ".agro/tasks/unrequested-action-replay/replay/build-fixture.mjs",
         ".agro/tasks/unrequested-action-replay/replay/bin/",
         ".agro/tasks/unrequested-action-replay/replay/oracle.mjs",
         ".agro/scripts/__tests__/unrequested-action-replay.test.ts"
-      ]
+      ],
+      "commit": "edbc98fd"
     },
     {
       "id": "US-002",
@@ -38,15 +39,16 @@
         "`pnpm test` exits 0 in the task worktree."
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "1 executed: run.mjs imports childEnv, claudeArgs, parseClaudeOutput from guard runner; guard entry checks now compare import.meta.url. 2 executed: trialEnv puts fixture bin first, drops LANGFUSE_ and CLAUDECODE. 3 executed: stubbed-spawn record shape test. 4 executed on task branch: test 0, typecheck 0, build 0.",
       "dependsOn": [
         "US-001"
       ],
       "files": [
         ".agro/tasks/unrequested-action-replay/replay/run.mjs",
         ".agro/scripts/__tests__/unrequested-action-replay.test.ts"
-      ]
+      ],
+      "commit": "02424883"
     },
     {
       "id": "US-003",
