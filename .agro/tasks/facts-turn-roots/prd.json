@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "bug/1422-facts-turn-roots",
+  "description": "Facts turn roots: treat an observation with isRootObservation true as a turn boundary in the behavioral-training facts stage.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Treat a root observation as a turn boundary",
+      "description": "As an analyst, I want each Claude Code turn root to end a guard follow-up so that the follow-up stays in one turn.",
+      "acceptanceCriteria": [
+        "A failing test in `.agro/scripts/__tests__/behavioral-training-facts.test.ts` is committed before the change. The test gives a guard block, then a non-user event with `isRootObservation: true` and a non-null parent in another trace, then a tool call. The test expects the tool call to stay out of the follow-up of the block.",
+        "`isBoundary` in `facts.mjs` returns true for an event with `isRootObservation === true`.",
+        "A test proves that an event with `isRootObservation: false` and a non-null parent is still not a boundary.",
+        "`pnpm run typecheck`, `pnpm test`, and `pnpm run build` exit 0 in the task worktree."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "1 executed: red commit (facts tests exit 1, 2 failed); root event with carrier parent ends the follow-up (obeyed, next r-1). 2 executed: isBoundary accepts isRootObservation === true. 3 executed: non-root event with parent still yields routed-around. 4 executed on task branch: typecheck 0, test 0 (2405 passed, 2 skipped), build 0.",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/behavioral-training/scripts/lib/facts.mjs",
+        ".agro/scripts/__tests__/behavioral-training-facts.test.ts",
+        ".agro/scripts/__tests__/fixtures/behavioral-training/facts/"
+      ],
+      "commit": "be02f64e"
+    },
+    {
+      "id": "US-002",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want a command transcript so that I can see the boundary rule on a fixture.",
+      "acceptanceCriteria": [
+        "`evidence/manual-review.md` shows the facts test run and the `guardBlocks` follow-up of the new fixture before and after the change. The file holds no transcript content and no secret."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "1 executed: evidence/manual-review.md shows before (unclear, next b-2) and after (obeyed, next r-1) on the synthetic fixture, test runs, failure path, cleanup; ste-check 0; synthetic data only.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/tasks/facts-turn-roots/evidence/"
+      ],
+      "commit": "85249b29"
+    }
+  ]
+}

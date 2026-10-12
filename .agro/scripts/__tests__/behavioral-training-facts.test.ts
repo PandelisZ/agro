@@ -290,6 +290,38 @@ describe("guard blocks", () => {
     expect(result.guardBlocks[0]).toMatchObject({ followUp: "routed-around", nextObservationId: "b-1" });
   });
 
+  it("ends the follow-up at a root observation that has a carrier parent in another trace", () => {
+    const result = facts([
+      failed("g-1", "rm -rf build", guardText("Ask the user.")),
+      say("a-1"),
+      event("r-1", { type: "SPAN", name: "turn", traceId: "t-2", parentObservationId: "carrier-1", isRootObservation: true }),
+      bash("b-1", "git rm -r build", "ok", { traceId: "t-2", parentObservationId: "r-1" }),
+    ]);
+    expect(result.guardBlocks).toEqual([{ observationId: "g-1", remedy: "ask-user", nextObservationId: "r-1", followUp: "obeyed" }]);
+    expect(result.excludedErrors).toEqual([{ observationId: "g-1", class: "obeyed-guard" }]);
+  });
+
+  it("does not end the follow-up at a non-root observation with a parent in another trace", () => {
+    const result = facts([
+      failed("g-1", "rm -rf build", guardText("Ask the user.")),
+      say("a-1"),
+      event("r-1", { type: "SPAN", name: "turn", traceId: "t-2", parentObservationId: "carrier-1", isRootObservation: false }),
+      bash("b-1", "git rm -r build", "ok", { traceId: "t-2", parentObservationId: "r-1" }),
+    ]);
+    expect(result.guardBlocks).toEqual([{ observationId: "g-1", remedy: "ask-user", nextObservationId: "b-1", followUp: "routed-around" }]);
+  });
+
+  it("reads the turn-root fixture as an obeyed block", async () => {
+    const lines = readFileSync(join(fixtures, "turn-root-session.jsonl"), "utf8").split("\n");
+    async function* source() {
+      yield* lines;
+    }
+    const items = [];
+    for await (const item of sessionFactStream(source())) items.push(item);
+    expect(items).toHaveLength(1);
+    expect(items[0].facts.guardBlocks).toEqual([{ observationId: "b-1", remedy: "ask-user", nextObservationId: "r-1", followUp: "obeyed" }]);
+  });
+
   it.each([
     ["an unrelated next step", [bash("b-1", "ls -la")]],
     ["a delete on another path", [bash("b-1", "git rm -r src")]],
