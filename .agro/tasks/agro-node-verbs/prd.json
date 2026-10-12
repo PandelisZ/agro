@@ -87,8 +87,8 @@
         "The docs reference tests in `.agro/cli/src/__tests__/docs-reference.test.ts` exit 0."
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed on task branch: vitest .agro/cli 0 (1346, includes docs-reference and docs tests); ste-check docs/lifecycle-commands.md 0; agro --help lists node (worker: built dist, grep exit 0). CHANGELOG entry added.",
       "dependsOn": [
         "US-003"
       ],
@@ -97,7 +97,8 @@
         ".agro/cli/src/cli.ts",
         ".agro/cli/src/__tests__/docs-reference.test.ts",
         "CHANGELOG.md"
-      ]
+      ],
+      "commit": "3ca2cc29"
     },
     {
       "id": "US-005",
