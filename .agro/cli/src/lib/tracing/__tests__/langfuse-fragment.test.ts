@@ -50,13 +50,14 @@ function readThroughTrackedZshenv(home: string, keys: readonly string[]): Record
 }
 
 describe("renderLangfuseFragment", () => {
-  it("renders exactly the four keys as bare KEY=value lines", () => {
+  it("renders the four Langfuse keys then the Pi capture limit as bare KEY=value lines", () => {
     expect(renderLangfuseFragment(INPUT)).toBe(
       [
         `LANGFUSE_PUBLIC_KEY=${INPUT.publicKey}`,
         `LANGFUSE_SECRET_KEY=${INPUT.secretKey}`,
         `LANGFUSE_BASE_URL=${INPUT.baseUrl}`,
         `LANGFUSE_TRACING_ENVIRONMENT=${INPUT.environment}`,
+        "PI_LANGFUSE_MAX_CHARS=100000",
         "",
       ].join("\n"),
     );
@@ -126,6 +127,7 @@ describe("writeLangfuseFragment", () => {
         LANGFUSE_SECRET_KEY: input.secretKey,
         LANGFUSE_BASE_URL: input.baseUrl,
         LANGFUSE_TRACING_ENVIRONMENT: input.environment,
+        PI_LANGFUSE_MAX_CHARS: "100000",
       };
       expect(readThroughTrackedZshenv(home, LANGFUSE_FRAGMENT_KEYS)).toEqual(expected);
     },

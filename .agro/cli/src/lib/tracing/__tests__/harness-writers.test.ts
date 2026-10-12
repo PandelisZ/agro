@@ -108,16 +108,21 @@ describe("claude-code writer", () => {
         CC_LANGFUSE_DEBUG: "true",
         LANGFUSE_BASE_URL: SETTINGS.baseUrl,
         LANGFUSE_TRACING_ENVIRONMENT: SETTINGS.environment,
+        CC_LANGFUSE_MAX_CHARS: "100000",
       },
       hooks: { Stop: [] },
     });
   });
 
-  it("writes only LANGFUSE_BASE_URL and LANGFUSE_TRACING_ENVIRONMENT into a fresh file", () => {
+  it("writes only LANGFUSE_BASE_URL, LANGFUSE_TRACING_ENVIRONMENT and CC_LANGFUSE_MAX_CHARS into a fresh file", () => {
     const home = makeHome();
     const { path } = claudeCodeTracingWriter(home, SETTINGS);
     expect(readJson(path)).toEqual({
-      env: { LANGFUSE_BASE_URL: SETTINGS.baseUrl, LANGFUSE_TRACING_ENVIRONMENT: SETTINGS.environment },
+      env: {
+        LANGFUSE_BASE_URL: SETTINGS.baseUrl,
+        LANGFUSE_TRACING_ENVIRONMENT: SETTINGS.environment,
+        CC_LANGFUSE_MAX_CHARS: "100000",
+      },
     });
   });
 
