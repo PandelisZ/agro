@@ -12,20 +12,21 @@
         "`SECRET_KEYS` in `.agro/cli/src/lib/secrets.ts` contains `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN`.",
         "`COMPOSE_SECRET_KEYS` does not contain `AGRO_CONSOLE_URL` or `AGRO_CONSOLE_TOKEN`.",
         "When the process environment sets a key, the resolver uses the environment value. Otherwise the resolver uses `readSecret` on the project root.",
-        "When either value is missing, each `agro node` verb exits 1 and prints `set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>`.",
+        "When the environment and the `.env` do not set `AGRO_CONSOLE_URL`, the resolver uses `DEFAULT_CONSOLE_URL` (`https://console.mifune.dev`).",
+        "When the token is missing, each `agro node` verb exits 1 and prints `set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN`.",
         "The resolver never prints the token.",
         "A test in `.agro/cli/src/__tests__/node.test.ts` covers the environment value, the `.env` fallback, and the missing-value error."
       ],
       "priority": 1,
       "passes": true,
-      "notes": "executed: pnpm exec vitest run .agro/cli exit 0 (1346 tests, node.test.ts covers each criterion); npm --prefix .agro/cli run typecheck exit 0 on integrated task branch. Deviation accepted: command-table.ts gains node verbs.",
+      "notes": "executed: pnpm exec vitest run .agro/cli exit 0 (1346 tests, node.test.ts covers each criterion); npm --prefix .agro/cli run typecheck exit 0 on integrated task branch. Deviation accepted: command-table.ts gains node verbs. Operator-directed 6a133d96: default URL https://console.mifune.dev; vitest .agro/cli 1354 pass, typecheck 0.",
       "dependsOn": [],
       "files": [
         ".agro/cli/src/lib/secrets.ts",
         ".agro/cli/src/commands/node.ts",
         ".agro/cli/src/__tests__/node.test.ts"
       ],
-      "commit": "14241778"
+      "commit": "14241778 6a133d96"
     },
     {
       "id": "US-002",
