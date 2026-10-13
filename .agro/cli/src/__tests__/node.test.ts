@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   CONSOLE_CONFIG_MISSING,
+  DEFAULT_CONSOLE_URL,
   resolveConsoleConfig,
   runNode,
   type NodeDeps,
@@ -48,11 +49,35 @@ describe("console config resolution", () => {
     expect(config).toEqual({ url: "https://file.example", token: "mfc_file" });
   });
 
-  it("returns undefined when either value is missing", () => {
+  it("uses the default URL when AGRO_CONSOLE_URL is unset in the environment and .env", () => {
+    const root = projectWithEnv("AGRO_CONSOLE_TOKEN=mfc_file\n");
+    expect(DEFAULT_CONSOLE_URL).toBe("https://console.mifune.dev");
+    expect(resolveConsoleConfig({}, (key) => readSecret(root, key))).toEqual({
+      url: "https://console.mifune.dev",
+      token: "mfc_file",
+    });
+    expect(resolveConsoleConfig({ AGRO_CONSOLE_URL: " ", AGRO_CONSOLE_TOKEN: TOKEN }, () => undefined)).toEqual({
+      url: DEFAULT_CONSOLE_URL,
+      token: TOKEN,
+    });
+  });
+
+  it("prefers the environment URL, then the .env URL, then the default", () => {
+    const root = projectWithEnv("AGRO_CONSOLE_URL=https://file.example//\n");
+    const fromFile = (key: "AGRO_CONSOLE_URL" | "AGRO_CONSOLE_TOKEN") => readSecret(root, key);
+    expect(resolveConsoleConfig({ AGRO_CONSOLE_URL: "https://env.example/", AGRO_CONSOLE_TOKEN: TOKEN }, fromFile)?.url).toBe(
+      "https://env.example",
+    );
+    expect(resolveConsoleConfig({ AGRO_CONSOLE_TOKEN: TOKEN }, fromFile)?.url).toBe("https://file.example");
+    expect(resolveConsoleConfig({ AGRO_CONSOLE_TOKEN: TOKEN }, () => undefined)?.url).toBe(DEFAULT_CONSOLE_URL);
+  });
+
+  it("returns undefined when the token is missing", () => {
     const root = projectWithEnv("AGRO_CONSOLE_URL=https://file.example\n");
     expect(resolveConsoleConfig({}, (key) => readSecret(root, key))).toBeUndefined();
-    expect(resolveConsoleConfig({ AGRO_CONSOLE_TOKEN: TOKEN }, () => undefined)).toBeUndefined();
-    expect(CONSOLE_CONFIG_MISSING).toBe("set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>");
+    expect(resolveConsoleConfig({}, () => undefined)).toBeUndefined();
+    expect(CONSOLE_CONFIG_MISSING).toBe("set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN");
+    expect(CONSOLE_CONFIG_MISSING).not.toContain("AGRO_CONSOLE_URL");
   });
 });
 
@@ -255,8 +280,8 @@ describe("agro node create", () => {
     expect(h.calls).toHaveLength(0);
   });
 
-  it("exits 1 with the config message when a value is missing", async () => {
-    const h = harness([{ status: 202, body: {} }], { env: { AGRO_CONSOLE_TOKEN: TOKEN } });
+  it("exits 1 with the token message when the token is missing", async () => {
+    const h = harness([{ status: 202, body: {} }], { env: { AGRO_CONSOLE_URL: "https://console.example" } });
     expect(await runNode(CREATE_ARGS, h.io, h.deps)).toBe(1);
     expect(h.stderr()).toContain(CONSOLE_CONFIG_MISSING);
     expect(h.all()).not.toContain(TOKEN);
@@ -298,7 +323,13 @@ describe("agro node list", () => {
     expect(h.stderr()).toContain("UNAUTHORIZED");
   });
 
-  it("exits 1 with the config message when a value is missing", async () => {
+  it("calls the default console URL when AGRO_CONSOLE_URL is unset", async () => {
+    const h = harness([{ status: 200, body: [] }], { env: { AGRO_CONSOLE_TOKEN: TOKEN } });
+    expect(await runNode(["list"], h.io, h.deps)).toBe(0);
+    expect(h.calls[0]).toMatchObject({ method: "GET", url: "https://console.mifune.dev/api/nodes" });
+  });
+
+  it("exits 1 with the token message when the token is missing", async () => {
     const h = harness([{ status: 200, body: [] }], { env: {} });
     expect(await runNode(["list"], h.io, h.deps)).toBe(1);
     expect(h.stderr()).toContain(CONSOLE_CONFIG_MISSING);
@@ -356,7 +387,7 @@ describe("agro node delete", () => {
     expect(h.calls).toHaveLength(0);
   });
 
-  it("exits 1 with the config message when a value is missing", async () => {
+  it("exits 1 with the token message when the token is missing", async () => {
     const h = harness([{ status: 204 }], { env: { AGRO_CONSOLE_URL: "https://console.example" } });
     expect(await runNode(["delete", "n1", "--yes"], h.io, h.deps)).toBe(1);
     expect(h.stderr()).toContain(CONSOLE_CONFIG_MISSING);

@@ -3,8 +3,9 @@ import { resolveProjectRoot } from "../lib/project.js";
 import * as prompt from "../lib/prompt.js";
 import { readSecret } from "../lib/secrets.js";
 
-export const CONSOLE_CONFIG_MISSING =
-  "set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>";
+export const DEFAULT_CONSOLE_URL = "https://console.mifune.dev";
+
+export const CONSOLE_CONFIG_MISSING = "set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN";
 
 export const NODE_READY_TIMEOUT_MS = 15 * 60 * 1000;
 export const NODE_POLL_INTERVAL_MS = 5000;
@@ -53,11 +54,12 @@ export function resolveConsoleConfig(
   const lookup = (key: ConsoleKey): string | undefined => {
     const fromEnv = env[key]?.trim();
     if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-    return readSecret(key);
+    const fromSecret = readSecret(key)?.trim();
+    return fromSecret === undefined || fromSecret === "" ? undefined : fromSecret;
   };
-  const url = lookup("AGRO_CONSOLE_URL");
   const token = lookup("AGRO_CONSOLE_TOKEN");
-  if (url === undefined || token === undefined) return undefined;
+  if (token === undefined) return undefined;
+  const url = lookup("AGRO_CONSOLE_URL") ?? DEFAULT_CONSOLE_URL;
   return { url: url.replace(/\/+$/, ""), token };
 }
 
@@ -94,6 +96,7 @@ Usage:
 its SSH command. \`--free-tier\` requests the console free tier. The spec
 defaults to n4. The verbs read AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN from the
 environment, then from the project .env (\`${bin} secret set <KEY>\`).
+AGRO_CONSOLE_URL defaults to ${DEFAULT_CONSOLE_URL}.
 `;
 }
 

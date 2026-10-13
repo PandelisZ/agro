@@ -13,7 +13,8 @@ Status: DRAFT
 - [ ] `SECRET_KEYS` in `.agro/cli/src/lib/secrets.ts` contains `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN`.
 - [ ] `COMPOSE_SECRET_KEYS` does not contain `AGRO_CONSOLE_URL` or `AGRO_CONSOLE_TOKEN`.
 - [ ] When the process environment sets a key, the resolver uses the environment value. Otherwise the resolver uses `readSecret` on the project root.
-- [ ] When either value is missing, each `agro node` verb exits 1 and prints `set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>`.
+- [ ] When the environment and the `.env` do not set `AGRO_CONSOLE_URL`, the resolver uses `DEFAULT_CONSOLE_URL` (`https://console.mifune.dev`).
+- [ ] When the token is missing, each `agro node` verb exits 1 and prints `set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN`.
 - [ ] The resolver never prints the token.
 - [ ] A test in `.agro/cli/src/__tests__/node.test.ts` covers the environment value, the `.env` fallback, and the missing-value error.
 

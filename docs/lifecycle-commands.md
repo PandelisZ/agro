@@ -300,9 +300,11 @@ agro node delete <id>                              # destroy one node after a co
 - Each verb reads `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN` from the
   environment first. When the environment does not set a key, the verb reads
   the key from the project `.env`. Run `agro secret set AGRO_CONSOLE_URL` and
-  `agro secret set AGRO_CONSOLE_TOKEN` to write the keys there. If a key is
-  missing, the verb exits 1 and prints
-  `set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>`.
+  `agro secret set AGRO_CONSOLE_TOKEN` to write the keys there.
+- The console URL is `https://console.mifune.dev` by default. Set
+  `AGRO_CONSOLE_URL` to use a different console. If the token is missing, the
+  verb exits 1 and prints
+  `set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN`.
 - `agro node create` creates a node with the profile `sandbox`. `--spec` and
   one or more `--ssh-key` flags are mandatory. `--name` sets the node name.
   `--free-tier` requests the agro-console free tier and sets the default spec to `n4`.
