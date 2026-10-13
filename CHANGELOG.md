@@ -9,6 +9,7 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 ## [Unreleased]
 
 ### Added
+- Add `agro node create`, `agro node list`, and `agro node delete` to create, list, and delete remote agro-console sandbox VMs with `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN` ([#1433](https://github.com/mifunedev/agro/pull/1433)).
 - Add `/behavioral-training` to analyze Langfuse sessions in resumable, operator-reviewed stages and publish reviewed evaluation datasets on request, and vendor the official Langfuse skill ([#1414](https://github.com/mifunedev/agro/pull/1414)).
 - Add desktop and mobile browser recording: `agro tool install ffmpeg` installs a pinned FFmpeg, the agent-browser `record.sh` helper writes an H.264 video and a manifest for each evidence or demo capture, and the [browser recording guide](docs/integrations/agent-browser.md) documents the procedure ([#1429](https://github.com/mifunedev/agro/pull/1429)).
 

@@ -48,6 +48,7 @@ Host prerequisites and the CLI install are in [Installation](installation.md).
 | `agro gateway <pi\|hermes>` · `agro gateway status` | `.agro/scripts/gateway.sh` |
 | `agro harness` · `agro tool` | install and inspect harnesses and tooling |
 | `agro workspace create [<name>] [--path <dir>] [--ref <ref>] [--json]` · `agro workspace list [--json]` | create and list host AGRO workspaces under `~/.agro/workspaces/` — see below |
+| `agro node create --spec <spec> --ssh-key <uuid> [--name <name>] [--free-tier] [--json]` · `agro node list [--json]` · `agro node delete <id> [--yes]` | create, list, and delete remote agro-console sandbox nodes — see below |
 | `agro --help` · `agro --version` | usage and version |
 
 `agro <verb> -- <args>` forwards extra arguments to `docker compose`, e.g.
@@ -284,6 +285,39 @@ agro workspace list --json                # the same rows as JSON
 Each verb resolves an existing workspace and exits 1 when none resolves. The
 refusal lists every workspace that exists and names `agro workspace create`. See
 [Harnesses Overview](harnesses/overview.md#installing-a-harness).
+
+## Remote console nodes: `agro node`
+
+`agro node` manages remote VMs through the agro-console API. `agro node` does not manage
+local Docker sandboxes. Use `agro sandbox` for a local sandbox.
+
+```bash
+agro node create --spec <spec> --ssh-key <uuid>   # create a sandbox node, wait for running
+agro node list                                     # every node: id, name, profile, status, IPv4
+agro node delete <id>                              # destroy one node after a confirmation
+```
+
+- Each verb reads `AGRO_CONSOLE_URL` and `AGRO_CONSOLE_TOKEN` from the
+  environment first. When the environment does not set a key, the verb reads
+  the key from the project `.env`. Run `agro secret set AGRO_CONSOLE_URL` and
+  `agro secret set AGRO_CONSOLE_TOKEN` to write the keys there.
+- The console URL is `https://console.mifune.dev` by default. Set
+  `AGRO_CONSOLE_URL` to use a different console. If the token is missing, the
+  verb exits 1 and prints
+  `set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN`.
+- `agro node create` creates a node with the profile `sandbox`. `--spec` and
+  one or more `--ssh-key` flags are mandatory. `--name` sets the node name.
+  `--free-tier` requests the agro-console free tier and sets the default spec to `n4`.
+  The command waits up to 15 minutes for the status `running`, then prints the
+  node id, the status, and the SSH command. If the node fails or does not reach
+  `running` in 15 minutes, the command exits 1 and prints the last status.
+- `agro node list` prints one row for each node. If no node exists, the command
+  prints `no nodes`.
+- `agro node delete <id>` asks for a confirmation. `--yes` skips the
+  confirmation. Destroy needs the admin role in agro-console. If the console
+  returns HTTP 403, the command exits 1 and prints
+  `destroy needs the admin role in agro-console`.
+- `--json` on `create` and `list` prints JSON instead of text.
 
 ## Langfuse tracing: `agro config langfuse` and `agro langfuse`
 
