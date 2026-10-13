@@ -1,6 +1,6 @@
 # PRD: `agro node` verbs for console sandbox nodes
 
-Status: BLOCKED
+Status: DRAFT
 
 ## User Stories
 
@@ -125,7 +125,7 @@ Run `pnpm exec vitest run .agro/cli` and `npm --prefix .agro/cli run typecheck` 
 
 ## Open Questions
 
-1. This task depends on the agro-console task `node-sandbox-profile`. Start implementation after that PR merges.
+1. Resolved: this task depends on agro-console #397. Merge #397 first.
 2. Destroy is admin-only in agro-console. Must an operator key delete the operator's own sandbox node? The answer sets the expected result of `agro node delete` for an operator key.
 3. Which field of `GET /api/nodes/<id>` holds the IPv4 address? Confirm the field name before US-002.
 
@@ -137,4 +137,6 @@ Run `pnpm exec vitest run .agro/cli` and `npm --prefix .agro/cli run typecheck` 
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. **Claim:** a console with payments disabled refused `agro node create` with `HTTP 403 PAYMENTS_DISABLED`. **Evidence:** the first live create against the local dev console. **Outcome:** fixed in this PR (`fa3051bd`, `agro node create --free-tier`).
+2. **Claim:** the first worker list of failure statuses named values that the console never sends. **Evidence:** the agro-console `NODE_STATUS` enum. **Outcome:** fixed in this PR (`f4b83513`).
+3. **Claim:** the secret-exposure guard blocks a shell command that reads `AGRO_CONSOLE_TOKEN` into a curl header, so an agent cannot look up a console SSH key id. **Evidence:** the guard denied the lookup during the live review. **Outcome:** dropped. The operator ran the lookup. An `agro node keys` verb is out of scope.
