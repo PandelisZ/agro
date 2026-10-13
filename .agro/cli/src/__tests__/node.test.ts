@@ -210,6 +210,44 @@ describe("agro node create", () => {
     expect(JSON.parse(h.stdout())).toEqual({ id: "n6", status: "running", ssh: "ssh sandbox@5.6.7.8" });
   });
 
+  it("sends freeTier true with --free-tier", async () => {
+    const h = harness([{ status: 202, body: { id: "f1", status: "running", ipv4: "1.2.3.4" } }]);
+    expect(await runNode(["create", "--spec", "n4", "--ssh-key", "key-1", "--free-tier"], h.io, h.deps)).toBe(0);
+    expect(h.calls[0].body).toEqual({ profile: "sandbox", spec: "n4", sshKeyIds: ["key-1"], freeTier: true });
+  });
+
+  it("sends no freeTier key without --free-tier", async () => {
+    const h = harness([{ status: 202, body: { id: "f2", status: "running", ipv4: "1.2.3.4" } }]);
+    expect(await runNode(["create", "--spec", "n4", "--ssh-key", "key-1"], h.io, h.deps)).toBe(0);
+    expect(h.calls[0].body).not.toHaveProperty("freeTier");
+  });
+
+  it("defaults the spec to n4 with --free-tier", async () => {
+    const h = harness([{ status: 202, body: { id: "f3", status: "running", ipv4: "1.2.3.4" } }]);
+    expect(await runNode(["create", "--free-tier", "--ssh-key", "key-1"], h.io, h.deps)).toBe(0);
+    expect(h.calls[0].body).toMatchObject({ spec: "n4", freeTier: true });
+  });
+
+  it("sends a spec other than n4 with --free-tier unchanged", async () => {
+    const h = harness([{ status: 202, body: { id: "f4", status: "running", ipv4: "1.2.3.4" } }]);
+    expect(await runNode(["create", "--free-tier", "--spec", "small", "--ssh-key", "key-1"], h.io, h.deps)).toBe(0);
+    expect(h.calls[0].body).toMatchObject({ spec: "small", freeTier: true });
+  });
+
+  it("prints the HTTP status and code when payments are disabled", async () => {
+    const h = harness([
+      {
+        status: 403,
+        body: { error: "Payments are not available yet. Use the free tier.", code: "PAYMENTS_DISABLED" },
+      },
+    ]);
+    expect(await runNode(["create", "--spec", "n4", "--ssh-key", "key-1"], h.io, h.deps)).toBe(1);
+    expect(h.stderr()).toContain(
+      "agro node create: HTTP 403 PAYMENTS_DISABLED: Payments are not available yet. Use the free tier.",
+    );
+    expect(h.calls).toHaveLength(1);
+  });
+
   it("requires --spec and --ssh-key", async () => {
     const h = harness([{ status: 202, body: {} }]);
     expect(await runNode(["create", "--ssh-key", "k"], h.io, h.deps)).toBe(1);

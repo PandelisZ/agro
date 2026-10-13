@@ -8,6 +8,7 @@ export const CONSOLE_CONFIG_MISSING =
 
 export const NODE_READY_TIMEOUT_MS = 15 * 60 * 1000;
 export const NODE_POLL_INTERVAL_MS = 5000;
+export const FREE_TIER_SPEC = "n4";
 
 const FAILURE_STATUSES = new Set(["failed", "destroy_requested", "destroying", "destroyed", "retired"]);
 
@@ -85,12 +86,13 @@ export function nodeHelp(bin: string): string {
   return `${bin} node — Create, list, and delete agro-console sandbox nodes (remote VMs)
 
 Usage:
-  ${bin} node create --spec <spec> --ssh-key <uuid> [--ssh-key <uuid>] [--name <name>] [--json]
+  ${bin} node create --spec <spec> --ssh-key <uuid> [--ssh-key <uuid>] [--name <name>] [--free-tier] [--json]
   ${bin} node list [--json]
   ${bin} node delete <id> [--yes]
 
 \`create\` waits up to 15 minutes for the node to reach \`running\`, then prints
-its SSH command. The verbs read AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN from the
+its SSH command. \`--free-tier\` requests the console free tier. The spec
+defaults to n4. The verbs read AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN from the
 environment, then from the project .env (\`${bin} secret set <KEY>\`).
 `;
 }
@@ -173,15 +175,20 @@ interface CreateArgs {
   spec?: string;
   sshKeyIds: string[];
   name?: string;
+  freeTier: boolean;
   json: boolean;
 }
 
 function parseCreate(tokens: string[]): { ok: true; args: CreateArgs } | { ok: false; error: string } {
-  const args: CreateArgs = { sshKeyIds: [], json: false };
+  const args: CreateArgs = { sshKeyIds: [], freeTier: false, json: false };
   for (let i = 0; i < tokens.length; i += 1) {
     const token = tokens[i];
     if (token === "--json") {
       args.json = true;
+      continue;
+    }
+    if (token === "--free-tier") {
+      args.freeTier = true;
       continue;
     }
     const [flag, inline] = token.startsWith("--") && token.includes("=")
@@ -196,6 +203,7 @@ function parseCreate(tokens: string[]): { ok: true; args: CreateArgs } | { ok: f
     else if (flag === "--name") args.name = value;
     else args.sshKeyIds.push(value);
   }
+  if (args.spec === undefined && args.freeTier) args.spec = FREE_TIER_SPEC;
   if (args.spec === undefined) return { ok: false, error: "--spec is required" };
   if (args.sshKeyIds.length === 0) return { ok: false, error: "at least one --ssh-key is required" };
   return { ok: true, args };
@@ -223,12 +231,13 @@ async function runCreate(
     io.stderr(`${prefix}: ${parsed.error}\n`);
     return 1;
   }
-  const { spec, sshKeyIds, name, json } = parsed.args;
+  const { spec, sshKeyIds, name, freeTier, json } = parsed.args;
   const created = await callApi(deps, config, "POST", "/api/nodes", {
     profile: "sandbox",
     spec,
     sshKeyIds,
     ...(name === undefined ? {} : { name }),
+    ...(freeTier ? { freeTier: true } : {}),
   });
   if (!created.ok) {
     io.stderr(`${prefix}: ${created.message}\n`);

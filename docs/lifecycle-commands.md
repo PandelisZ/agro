@@ -48,7 +48,7 @@ Host prerequisites and the CLI install are in [Installation](installation.md).
 | `agro gateway <pi\|hermes>` · `agro gateway status` | `.agro/scripts/gateway.sh` |
 | `agro harness` · `agro tool` | install and inspect harnesses and tooling |
 | `agro workspace create [<name>] [--path <dir>] [--ref <ref>] [--json]` · `agro workspace list [--json]` | create and list host AGRO workspaces under `~/.agro/workspaces/` — see below |
-| `agro node create --spec <spec> --ssh-key <uuid> [--name <name>] [--json]` · `agro node list [--json]` · `agro node delete <id> [--yes]` | create, list, and delete remote agro-console sandbox nodes — see below |
+| `agro node create --spec <spec> --ssh-key <uuid> [--name <name>] [--free-tier] [--json]` · `agro node list [--json]` · `agro node delete <id> [--yes]` | create, list, and delete remote agro-console sandbox nodes — see below |
 | `agro --help` · `agro --version` | usage and version |
 
 `agro <verb> -- <args>` forwards extra arguments to `docker compose`, e.g.
@@ -305,6 +305,7 @@ agro node delete <id>                              # destroy one node after a co
   `set AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN, or run agro secret set <KEY>`.
 - `agro node create` creates a node with the profile `sandbox`. `--spec` and
   one or more `--ssh-key` flags are mandatory. `--name` sets the node name.
+  `--free-tier` requests the agro-console free tier and sets the default spec to `n4`.
   The command waits up to 15 minutes for the status `running`, then prints the
   node id, the status, and the SSH command. If the node fails or does not reach
   `running` in 15 minutes, the command exits 1 and prints the last status.
