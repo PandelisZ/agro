@@ -1,25 +1,29 @@
+import { readFileSync } from "node:fs";
+import { homedir, hostname } from "node:os";
+import { join } from "node:path";
 import { isOneOf, NODE_VERBS } from "../command-table.js";
-import { resolveProjectRoot } from "../lib/project.js";
+import { readConsoleCredentials, type ConsoleCredentials } from "../lib/console-auth.js";
 import * as prompt from "../lib/prompt.js";
-import { readSecret } from "../lib/secrets.js";
 
 export const DEFAULT_CONSOLE_URL = "https://console.mifune.dev";
 
-export const CONSOLE_CONFIG_MISSING = "set AGRO_CONSOLE_TOKEN, or run agro secret set AGRO_CONSOLE_TOKEN";
+export const CONSOLE_CONFIG_MISSING = "not logged in to agro-console: run agro auth login";
 
 export const NODE_READY_TIMEOUT_MS = 15 * 60 * 1000;
 export const NODE_FAST_POLL_INTERVAL_MS = 1000;
 export const NODE_FAST_POLL_WINDOW_MS = 30 * 1000;
 export const NODE_POLL_INTERVAL_MS = 5000;
 export const FREE_TIER_SPEC = "n4";
+export const LOCAL_SSH_KEY_MISSING = "no --ssh-key given and ~/.ssh/id_ed25519.pub not found";
 
 const FAILURE_STATUSES = new Set(["failed", "destroy_requested", "destroying", "destroyed", "retired"]);
 
-export type ConsoleKey = "AGRO_CONSOLE_URL" | "AGRO_CONSOLE_TOKEN";
+export type ConsoleTokenSource = "env" | "file";
 
 export interface ConsoleConfig {
   url: string;
   token: string;
+  source: ConsoleTokenSource;
 }
 
 export interface NodeIO {
@@ -30,7 +34,10 @@ export interface NodeIO {
 export interface NodeDeps {
   fetch: typeof fetch;
   env: Record<string, string | undefined>;
-  readSecret: (key: ConsoleKey) => string | undefined;
+  readCredentials: () => ConsoleCredentials | undefined;
+  homeDir: () => string;
+  hostname: () => string;
+  readFile: (path: string) => string | undefined;
   sleep: (ms: number) => Promise<void>;
   now: () => number;
   pollDelayMs: (elapsedMs: number) => number;
@@ -51,26 +58,19 @@ type ApiResult = { ok: true; status: number; body: unknown } | { ok: false; stat
 
 export function resolveConsoleConfig(
   env: Record<string, string | undefined>,
-  readSecret: (key: ConsoleKey) => string | undefined,
+  readCredentials: () => ConsoleCredentials | undefined,
 ): ConsoleConfig | undefined {
-  const lookup = (key: ConsoleKey): string | undefined => {
-    const fromEnv = env[key]?.trim();
-    if (fromEnv !== undefined && fromEnv !== "") return fromEnv;
-    const fromSecret = readSecret(key)?.trim();
-    return fromSecret === undefined || fromSecret === "" ? undefined : fromSecret;
+  const present = (value: string | undefined): string | undefined => {
+    const trimmed = value?.trim();
+    return trimmed === undefined || trimmed === "" ? undefined : trimmed;
   };
-  const token = lookup("AGRO_CONSOLE_TOKEN");
-  if (token === undefined) return undefined;
-  const url = lookup("AGRO_CONSOLE_URL") ?? DEFAULT_CONSOLE_URL;
-  return { url: url.replace(/\/+$/, ""), token };
-}
-
-function readProjectSecret(key: ConsoleKey): string | undefined {
-  try {
-    return readSecret(resolveProjectRoot(), key);
-  } catch {
-    return undefined;
-  }
+  const trimUrl = (url: string | undefined): string => (url ?? DEFAULT_CONSOLE_URL).replace(/\/+$/, "");
+  const envToken = present(env.AGRO_CONSOLE_TOKEN);
+  if (envToken !== undefined) return { url: trimUrl(present(env.AGRO_CONSOLE_URL)), token: envToken, source: "env" };
+  const file = readCredentials();
+  const fileToken = present(file?.token);
+  if (fileToken === undefined) return undefined;
+  return { url: trimUrl(present(file?.url)), token: fileToken, source: "file" };
 }
 
 export function nodePollDelayMs(elapsedMs: number): number {
@@ -81,7 +81,16 @@ function defaultDeps(): NodeDeps {
   return {
     fetch: (input, init) => globalThis.fetch(input, init),
     env: process.env,
-    readSecret: readProjectSecret,
+    readCredentials: () => readConsoleCredentials(),
+    homeDir: () => homedir(),
+    hostname: () => hostname(),
+    readFile: (path) => {
+      try {
+        return readFileSync(path, "utf8");
+      } catch {
+        return undefined;
+      }
+    },
     sleep: (ms) => new Promise((done) => setTimeout(done, ms)),
     now: () => Date.now(),
     pollDelayMs: nodePollDelayMs,
@@ -94,15 +103,16 @@ export function nodeHelp(bin: string): string {
   return `${bin} node — Create, list, and delete agro-console sandbox nodes (remote VMs)
 
 Usage:
-  ${bin} node create --spec <spec> --ssh-key <uuid> [--ssh-key <uuid>] [--name <name>] [--free-tier] [--json]
+  ${bin} node create --spec <spec> [--ssh-key <uuid>]... [--name <name>] [--free-tier] [--json]
   ${bin} node list [--json]
   ${bin} node delete <id> [--yes]
 
 \`create\` waits up to 15 minutes for the node to reach \`running\`, then prints
 its SSH command. \`--free-tier\` requests the console free tier. The spec
-defaults to n4. The verbs read AGRO_CONSOLE_URL and AGRO_CONSOLE_TOKEN from the
-environment, then from the project .env (\`${bin} secret set <KEY>\`).
-AGRO_CONSOLE_URL defaults to ${DEFAULT_CONSOLE_URL}.
+defaults to n4. When AGRO_CONSOLE_TOKEN is set, the verbs use it with
+AGRO_CONSOLE_URL. Otherwise the verbs use the token and the URL from the
+credentials file that \`${bin} auth login\` writes. The URL defaults to
+${DEFAULT_CONSOLE_URL}.
 `;
 }
 
@@ -214,8 +224,45 @@ function parseCreate(tokens: string[]): { ok: true; args: CreateArgs } | { ok: f
   }
   if (args.spec === undefined && args.freeTier) args.spec = FREE_TIER_SPEC;
   if (args.spec === undefined) return { ok: false, error: "--spec is required" };
-  if (args.sshKeyIds.length === 0) return { ok: false, error: "at least one --ssh-key is required" };
   return { ok: true, args };
+}
+
+function keyIdentity(publicKey: string): string {
+  return publicKey.trim().split(/\s+/).slice(0, 2).join(" ");
+}
+
+function toKeyList(body: unknown): Record<string, unknown>[] {
+  const record = asRecord(body);
+  const items = Array.isArray(body) ? body : record?.sshKeys;
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item: unknown): Record<string, unknown>[] => {
+    const key = asRecord(item);
+    return key === undefined ? [] : [key];
+  });
+}
+
+async function resolveSshKeyId(
+  deps: NodeDeps,
+  config: ConsoleConfig,
+): Promise<{ ok: true; id: string } | { ok: false; error: string }> {
+  const publicKey = deps.readFile(join(deps.homeDir(), ".ssh", "id_ed25519.pub"))?.trim();
+  if (publicKey === undefined || publicKey === "") return { ok: false, error: LOCAL_SSH_KEY_MISSING };
+  const listed = await callApi(deps, config, "GET", "/api/ssh-keys");
+  if (!listed.ok) return { ok: false, error: listed.message };
+  const identity = keyIdentity(publicKey);
+  const match = toKeyList(listed.body).find(
+    (key) => typeof key.publicKey === "string" && keyIdentity(key.publicKey) === identity,
+  );
+  const matchId = asText(match?.id);
+  if (matchId !== null) return { ok: true, id: matchId };
+  const registered = await callApi(deps, config, "POST", "/api/ssh-keys", {
+    name: `agro-cli@${deps.hostname()}`,
+    publicKey,
+  });
+  if (!registered.ok) return { ok: false, error: registered.message };
+  const outer = asRecord(registered.body);
+  const id = asText((asRecord(outer?.sshKey) ?? outer)?.id);
+  return id === null ? { ok: false, error: "the console response has no SSH key id" } : { ok: true, id };
 }
 
 function printCreateResult(io: NodeIO, node: ConsoleNode, json: boolean): void {
@@ -240,7 +287,16 @@ async function runCreate(
     io.stderr(`${prefix}: ${parsed.error}\n`);
     return 1;
   }
-  const { spec, sshKeyIds, name, freeTier, json } = parsed.args;
+  const { spec, name, freeTier, json } = parsed.args;
+  let sshKeyIds = parsed.args.sshKeyIds;
+  if (sshKeyIds.length === 0) {
+    const resolved = await resolveSshKeyId(deps, config);
+    if (!resolved.ok) {
+      io.stderr(`${prefix}: ${resolved.error}\n`);
+      return 1;
+    }
+    sshKeyIds = [resolved.id];
+  }
   const requestedAt = deps.now();
   const created = await callApi(deps, config, "POST", "/api/nodes", {
     profile: "sandbox",
@@ -387,9 +443,9 @@ export async function runNode(
     return 0;
   }
   const deps = { ...defaultDeps(), ...overrides };
-  const config = resolveConsoleConfig(deps.env, deps.readSecret);
+  const config = resolveConsoleConfig(deps.env, deps.readCredentials);
   if (config === undefined) {
-    io.stderr(`${bin} node ${verb}: ${CONSOLE_CONFIG_MISSING}\n`);
+    io.stderr(`${CONSOLE_CONFIG_MISSING}\n`);
     return 1;
   }
   if (verb === "list") return runList(rest, io, deps, config, bin);
