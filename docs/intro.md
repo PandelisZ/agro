@@ -4,10 +4,12 @@ title: "Introduction"
 
 # AGRO
 
-AGRO gives a coding agent an isolated Docker sandbox that you control. You choose
-the coding harness: Claude Code, Codex, Pi, or another. The sandbox keeps the
-agent, its tools, and its logins off your host. The sandbox runs on your laptop
-or on a remote VM, and the agent keeps working after you disconnect.
+AGRO gives coding agents an isolated Docker sandbox that you control. Two or more
+agents can work side by side in one sandbox, for example Claude Code, Codex, and
+Pi. See the [harness overview](harnesses/overview.md) for every supported
+harness. The sandbox keeps the agents, their tools, and their logins off your
+host. The sandbox runs on your laptop or on a remote VM, and the agents keep
+working after you disconnect.
 
 ## What AGRO gives you
 

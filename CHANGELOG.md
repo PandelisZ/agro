@@ -11,6 +11,7 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 ### Changed
 - Bound follow-up findings: root `AGENTS.md` adds "Do not turn findings into backlog", and the `/delegate` Close step proposes issues only for out-of-scope correctness or security risks, caps open `follow-up` issues at 10, and labels approved issues `follow-up` ([#1457](https://github.com/mifunedev/agro/issues/1457)).
 ### Fixed
+- Name every installable harness in the README harness table, including OpenClaw, Antigravity CLI, and fx, and say in the README and the introduction that two or more harnesses can work side by side in one workspace ([#1461](https://github.com/mifunedev/agro/issues/1461)).
 - Correct the harness overview: two or more agents can work in one environment at the same time, for example Claude Code in a Herdr pane and Hermes or Pi in Slack ([#1459](https://github.com/mifunedev/agro/issues/1459)).
 - Make a host `agro tool install agent-browser` load a scoped AppArmor `userns` profile for downloaded Chrome when Ubuntu restricts user namespaces, or print the commands without sudo ([#1455](https://github.com/mifunedev/agro/issues/1455)).
 
