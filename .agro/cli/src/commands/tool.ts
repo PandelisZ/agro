@@ -1,15 +1,28 @@
 import { existsSync } from "node:fs";
-import { homedir, userInfo } from "node:os";
-import { delimiter, join } from "node:path";
+import { userInfo } from "node:os";
+import { join } from "node:path";
 import {
   ExecutionSpawnError,
   resolveExecutionTarget,
   resolveTargetStatus,
   runningInsideSandbox,
-  runtimeIsAbsent,
 } from "../lib/execution/index.js";
-import { LocalExecutionTarget, type LocalIdentity } from "../lib/execution/local-target.js";
-import { spawnRunner, type LifecycleRunner } from "../lib/execution/runner.js";
+import type { LocalIdentity } from "../lib/execution/local-target.js";
+import { messageOf, spawnRunner, type LifecycleRunner } from "../lib/execution/runner.js";
+import {
+  homeOf,
+  hostPrefix,
+  hostTargetFor,
+  installedCell,
+  isInteractive,
+  isReachable,
+  onPath,
+  probeableHost,
+  sandboxRefusal,
+  unreachableReason,
+  writeInstalledNote,
+  writeTable,
+} from "../lib/execution/status.js";
 import type { ExecutionTarget } from "../lib/execution/target.js";
 import { sourceDocsUrl } from "../lib/docs.js";
 import { harnessBinPath, SANDBOX_HARNESS_PREFIX } from "../lib/harnesses/catalog.js";
@@ -89,10 +102,6 @@ interface CollectedRows {
 
 type ProbeUser = "root" | "sandbox" | undefined;
 
-function isReachable(status: string): boolean {
-  return status === "ready" || status === "starting";
-}
-
 function targetFor(
   root: string,
   run: LifecycleRunner,
@@ -105,10 +114,6 @@ function targetFor(
     run,
     ...(env ? { env } : {}),
   });
-}
-
-function hostPrefix(home: string): string {
-  return join(home, ".local");
 }
 
 function sandboxMarkerPath(entry: ToolEntry): string {
@@ -128,36 +133,6 @@ function hostBinaryUnderPrefix(entry: ToolEntry, prefix: string): boolean {
   return existsSync(join(harnessBinPath(prefix), entry.binary));
 }
 
-function pathEntries(env: NodeJS.ProcessEnv): string[] {
-  return (env.PATH ?? "").split(delimiter).filter((part) => part !== "");
-}
-
-function onPath(prefix: string, env: NodeJS.ProcessEnv): boolean {
-  return pathEntries(env).includes(harnessBinPath(prefix));
-}
-
-function hostTargetFor(
-  root: string,
-  prefix: string,
-  run: LifecycleRunner,
-  env: NodeJS.ProcessEnv,
-): ExecutionTarget {
-  const path = [harnessBinPath(prefix), ...pathEntries(env)].join(delimiter);
-  return new LocalExecutionTarget({
-    projectRoot: root,
-    run,
-    env: { ...env, PATH: path },
-  });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
-}
-
-function homeOf(opts: ToolOptions): string {
-  return (opts.homedir ?? homedir)();
-}
-
 function platformOf(opts: ToolOptions): NodeJS.Platform {
   return opts.platform ?? process.platform;
 }
@@ -165,10 +140,6 @@ function platformOf(opts: ToolOptions): NodeJS.Platform {
 function isRootUser(opts: ToolOptions): boolean {
   const identity = opts.identity ?? (() => ({ name: userInfo().username, uid: userInfo().uid }));
   return identity().uid === 0;
-}
-
-function isInteractive(opts: ToolOptions): boolean {
-  return opts.interactive ?? (process.stdin.isTTY === true && process.stdout.isTTY === true);
 }
 
 async function tryExec(
@@ -234,23 +205,6 @@ function rowOf(
   };
 }
 
-interface HostProbe {
-  root: string;
-  prefix: string;
-}
-
-function probeableHost(env: NodeJS.ProcessEnv, home: string): HostProbe | undefined {
-  let root: string;
-  try {
-    root = resolveHarnessRoot(undefined, env, home);
-  } catch {
-    return undefined;
-  }
-  const prefix = hostPrefix(home);
-  if (!existsSync(join(root, ".git")) && !existsSync(prefix)) return undefined;
-  return { root, prefix };
-}
-
 async function collectRows(
   root: string,
   run: LifecycleRunner,
@@ -286,38 +240,17 @@ async function collectRows(
   return { rows, hostPrefix: host.prefix };
 }
 
-function cell(value: boolean | null, absent: string): string {
-  if (value === null) return absent;
-  return value ? "yes" : "no";
-}
-
 function renderTable(collected: CollectedRows, io: ToolIO, bin: string): void {
   const rows = collected.rows;
-  const header = ["TOOL", "KIND", "INSTALLED"];
-  const body = rows.map((r) => [
+  writeTable(io.stdout, ["TOOL", "KIND", "INSTALLED"], rows.map((r) => [
     r.id,
     r.hostRoot ? `${r.kind} (root)` : r.kind,
-    cell(r.installed, "?"),
-  ]);
-  const widths = header.map((h, i) =>
-    Math.max(h.length, ...body.map((b) => b[i].length)),
-  );
-  const line = (cols: string[]): string =>
-    cols.map((c, i) => c.padEnd(widths[i])).join("  ").trimEnd() + "\n";
-  io.stdout(line(header));
-  for (const row of body) io.stdout(line(row));
+    installedCell(r.installed),
+  ]));
   if (rows.some((r) => r.hostRoot)) {
     io.stdout("\n(root) installs on the host as root through `sudo -n`.\n");
   }
-  if (rows.some((r) => r.location === "host")) {
-    io.stdout(
-      `\nINSTALLED reports the host prefix ${collected.hostPrefix} — the sandbox is not running.\n`,
-    );
-    return;
-  }
-  if (rows.some((r) => r.installed === null)) {
-    io.stdout(`\nINSTALLED is \`?\` — the sandbox is not running. Start it with \`${bin} sandbox\`.\n`);
-  }
+  writeInstalledNote(io.stdout, rows, collected.hostPrefix, bin);
 }
 
 function renderDetail(collected: CollectedRows, io: ToolIO, bin: string): void {
@@ -393,22 +326,6 @@ async function confirmDownload(
   return false;
 }
 
-function unreachableReason(status: string): string {
-  return runtimeIsAbsent(status)
-    ? "No container runtime is on PATH."
-    : `The sandbox is not running (${status}).`;
-}
-
-function sandboxRefusal(bin: string, status: string): string {
-  if (runtimeIsAbsent(status)) {
-    return `${bin} tool: no container runtime is on PATH.\n`;
-  }
-  return (
-    `${bin} tool: the sandbox is not running (${status}).\n` +
-    `Start it with \`${bin} sandbox\`, then re-run this command.\n`
-  );
-}
-
 function hostCapableList(bin: string): string {
   return `Tools that install on the host:\n${hostCapableToolIds().map((t) => `  ${bin} tool install ${t} --host`).join("\n")}\n`;
 }
@@ -426,7 +343,7 @@ async function installOnHost(
   const flagged = opts.host === true || opts.path !== undefined;
 
   if (!entry.hostCapable) {
-    io.stderr(sandboxRefusal(bin, status));
+    io.stderr(sandboxRefusal(bin, "tool", status));
     io.stderr(`\n${bin} tool: ${entry.id} cannot be installed on the host.\n`);
     io.stderr(`${(entry.notHostCapableReason ?? entry.notInstallableReason)?.(bin) ?? ""}\n\n`);
     io.stderr(hostCapableList(bin));
@@ -435,7 +352,7 @@ async function installOnHost(
 
   const platform = platformOf(opts);
   if (platform !== TOOL_HOST_PLATFORM) {
-    io.stderr(sandboxRefusal(bin, status));
+    io.stderr(sandboxRefusal(bin, "tool", status));
     io.stderr(
       `\n${bin} tool: a host install needs ${TOOL_HOST_PLATFORM}; this host is ${platform}.\n` +
         `Every tool installer in the catalog is Debian-specific. Install ${entry.id} with your own package manager, or start the sandbox.\n`,
@@ -445,7 +362,7 @@ async function installOnHost(
 
   if (!flagged && !isInteractive(opts)) {
     io.stderr(
-      sandboxRefusal(bin, status) +
+      sandboxRefusal(bin, "tool", status) +
         `Or install on the host with \`${bin} tool install ${entry.id} --host\`.\n`,
     );
     return 1;
@@ -468,7 +385,7 @@ async function installOnHost(
       `${unreachableReason(status)} Install ${entry.title} on the host? [y/N]`,
     )).trim().toLowerCase();
     if (!/^y/.test(answer)) {
-      io.stderr(sandboxRefusal(bin, status));
+      io.stderr(sandboxRefusal(bin, "tool", status));
       return 1;
     }
   }

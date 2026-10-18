@@ -25,6 +25,9 @@ export interface ToolEntry {
 
 const TOOLS_DOC = "docs/installation.md";
 
+const commandCheck = (binary: string): readonly string[] =>
+  Object.freeze(["bash", "-lc", `command -v ${binary} >/dev/null`]);
+
 export const TOOL_HOST_PLATFORM = "linux";
 
 export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
@@ -33,7 +36,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "agent-browser",
     kind: "installable",
     binary: "agent-browser",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v agent-browser >/dev/null"]),
+    verifyArgv: commandCheck("agent-browser"),
     installArgv: Object.freeze([
       "bash",
       "-lc",
@@ -131,7 +134,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "Herdr",
     kind: "installable",
     binary: "herdr",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v herdr >/dev/null"]),
+    verifyArgv: commandCheck("herdr"),
     versionArgv: Object.freeze(["herdr", "--version"]),
     installArgv: Object.freeze([
       "bash",
@@ -164,7 +167,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "cloudflared",
     kind: "installable",
     binary: "cloudflared",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v cloudflared >/dev/null"]),
+    verifyArgv: commandCheck("cloudflared"),
     versionArgv: Object.freeze(["cloudflared", "--version"]),
     installArgv: Object.freeze([
       "bash",
@@ -198,7 +201,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "MicroSandbox CLI",
     kind: "installable",
     binary: "msb",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v msb >/dev/null"]),
+    verifyArgv: commandCheck("msb"),
     versionArgv: Object.freeze(["msb", "--version"]),
     installArgv: Object.freeze([
       "bash",
@@ -230,7 +233,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "Docker CLI + Compose",
     kind: "baked-in",
     binary: "docker",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v docker >/dev/null"]),
+    verifyArgv: commandCheck("docker"),
     versionArgv: Object.freeze(["docker", "--version"]),
     notInstallableReason: (bin: string): string =>
       `The Docker CLI is installed in the base image. Note that the CLI being present says nothing about whether a daemon is reachable — \`${bin} ps <name>\` answers that.`,
@@ -243,7 +246,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "GitHub CLI",
     kind: "baked-in",
     binary: "gh",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v gh >/dev/null"]),
+    verifyArgv: commandCheck("gh"),
     versionArgv: Object.freeze(["gh", "--version"]),
     notInstallableReason: (): string =>
       "The GitHub CLI is installed in the base image. Run `gh auth login` inside the sandbox to authenticate it.",
@@ -256,7 +259,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "Tailscale",
     kind: "installable",
     binary: "tailscale",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v tailscale >/dev/null"]),
+    verifyArgv: commandCheck("tailscale"),
     versionArgv: Object.freeze(["tailscale", "--version"]),
     installArgv: Object.freeze([
       "bash",
@@ -278,7 +281,7 @@ export const TOOL_CATALOG: readonly ToolEntry[] = Object.freeze([
     title: "code-server",
     kind: "installable",
     binary: "code-server",
-    verifyArgv: Object.freeze(["bash", "-lc", "command -v code-server >/dev/null"]),
+    verifyArgv: commandCheck("code-server"),
     versionArgv: Object.freeze(["code-server", "--version"]),
     installArgv: Object.freeze([
       "bash",

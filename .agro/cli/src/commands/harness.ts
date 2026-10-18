@@ -1,17 +1,28 @@
 import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { delimiter, join } from "node:path";
+import { join } from "node:path";
 import {
   ExecutionSpawnError,
   resolveExecutionTarget,
   resolveTargetStatus,
-  runtimeIsAbsent,
 } from "../lib/execution/index.js";
 import { agroEnvPair, agroEnvValue, remoteControlDirScript } from "../lib/layout.js";
 import { sourceDocsUrl } from "../lib/docs.js";
 import { runningInsideSandbox } from "../lib/execution/detect.js";
-import { LocalExecutionTarget } from "../lib/execution/local-target.js";
-import { spawnRunner, type LifecycleRunner } from "../lib/execution/runner.js";
+import { messageOf, spawnRunner, type LifecycleRunner } from "../lib/execution/runner.js";
+import {
+  homeOf,
+  hostPrefix,
+  hostTargetFor,
+  installedCell,
+  isInteractive,
+  isReachable,
+  onPath,
+  probeableHost,
+  sandboxRefusal,
+  unreachableReason,
+  writeInstalledNote,
+  writeTable,
+} from "../lib/execution/status.js";
 import type { ExecutionTarget } from "../lib/execution/target.js";
 import {
   readHostConfig,
@@ -84,10 +95,6 @@ type InstallUser = "root" | "sandbox" | undefined;
 
 export const PROBE_TIMEOUT_MS = 15_000;
 
-function isReachable(status: string): boolean {
-  return status === "ready" || status === "starting";
-}
-
 function registeredContainerName(cwd: string | undefined): string | undefined {
   try {
     return configuredContainerName(resolveSandboxRoot(cwd === undefined ? {} : { cwd }));
@@ -109,36 +116,6 @@ function targetFor(
     run,
     ...(env ? { env } : {}),
   });
-}
-
-function hostPrefix(home: string): string {
-  return join(home, ".local");
-}
-
-function pathEntries(env: NodeJS.ProcessEnv): string[] {
-  return (env.PATH ?? "").split(delimiter).filter((part) => part !== "");
-}
-
-function onPath(prefix: string, env: NodeJS.ProcessEnv): boolean {
-  return pathEntries(env).includes(harnessBinPath(prefix));
-}
-
-function hostTargetFor(
-  root: string,
-  prefix: string,
-  run: LifecycleRunner,
-  env: NodeJS.ProcessEnv,
-): ExecutionTarget {
-  const path = [harnessBinPath(prefix), ...pathEntries(env)].join(delimiter);
-  return new LocalExecutionTarget({
-    projectRoot: root,
-    run,
-    env: { ...env, PATH: path },
-  });
-}
-
-function messageOf(error: unknown): string {
-  return error instanceof Error ? error.message : String(error);
 }
 
 async function probeInstalled(
@@ -197,23 +174,6 @@ function stateOf(
   };
 }
 
-interface HostProbe {
-  root: string;
-  prefix: string;
-}
-
-function probeableHost(env: NodeJS.ProcessEnv, home: string): HostProbe | undefined {
-  let root: string;
-  try {
-    root = resolveHarnessRoot(undefined, env, home);
-  } catch {
-    return undefined;
-  }
-  const prefix = hostPrefix(home);
-  if (!existsSync(join(root, ".git")) && !existsSync(prefix)) return undefined;
-  return { root, prefix };
-}
-
 async function collectStates(
   root: string,
   cwd: string | undefined,
@@ -250,31 +210,14 @@ async function collectStates(
   return { states, hostPrefix: host.prefix };
 }
 
-function cell(value: boolean | null, absent: string): string {
-  if (value === null) return absent;
-  return value ? "yes" : "no";
-}
-
 function renderTable(collected: CollectedStates, io: HarnessIO, bin: string): void {
   const states = collected.states;
-  const header = ["HARNESS", "KIND", "INSTALLED"];
-  const rows = states.map((s) => [s.id, s.kind, cell(s.installed, "?")]);
-  const widths = header.map((h, i) =>
-    Math.max(h.length, ...rows.map((r) => r[i].length)),
+  writeTable(
+    io.stdout,
+    ["HARNESS", "KIND", "INSTALLED"],
+    states.map((s) => [s.id, s.kind, installedCell(s.installed)]),
   );
-  const line = (cols: string[]): string =>
-    cols.map((c, i) => c.padEnd(widths[i])).join("  ").trimEnd() + "\n";
-  io.stdout(line(header));
-  for (const row of rows) io.stdout(line(row));
-  if (states.some((s) => s.location === "host")) {
-    io.stdout(
-      `\nINSTALLED reports the host prefix ${collected.hostPrefix} — the sandbox is not running.\n`,
-    );
-    return;
-  }
-  if (states.some((s) => s.installed === null)) {
-    io.stdout(`\nINSTALLED is \`?\` — the sandbox is not running. Start it with \`${bin} sandbox\`.\n`);
-  }
+  writeInstalledNote(io.stdout, states, collected.hostPrefix, bin);
 }
 
 export async function runHarnessList(opts: HarnessOptions, io: HarnessIO): Promise<number> {
@@ -474,30 +417,6 @@ async function configureOpenclaw(
   return result.exitCode;
 }
 
-function unreachableReason(status: string): string {
-  return runtimeIsAbsent(status)
-    ? "No container runtime is on PATH."
-    : `The sandbox is not running (${status}).`;
-}
-
-function sandboxRefusal(bin: string, status: string): string {
-  if (runtimeIsAbsent(status)) {
-    return `${bin} harness: no container runtime is on PATH.\n`;
-  }
-  return (
-    `${bin} harness: the sandbox is not running (${status}).\n` +
-    `Start it with \`${bin} sandbox\`, then re-run this command.\n`
-  );
-}
-
-function homeOf(opts: HarnessOptions): string {
-  return (opts.homedir ?? homedir)();
-}
-
-function isInteractive(opts: HarnessOptions): boolean {
-  return opts.interactive ?? (process.stdin.isTTY === true && process.stdout.isTTY === true);
-}
-
 async function installOnHost(
   entry: HarnessEntry,
   opts: HarnessOptions,
@@ -512,7 +431,7 @@ async function installOnHost(
 
   if (!flagged && !isInteractive(opts)) {
     io.stderr(
-      sandboxRefusal(bin, status) +
+      sandboxRefusal(bin, "harness", status) +
         `Or install on the host with \`${bin} harness install ${entry.id} --host\`.\n`,
     );
     return 1;
@@ -543,7 +462,7 @@ async function installOnHost(
       `${unreachableReason(status)} Install ${entry.title} on the host? [y/N]`,
     )).trim().toLowerCase();
     if (!/^y/.test(answer)) {
-      io.stderr(sandboxRefusal(bin, status));
+      io.stderr(sandboxRefusal(bin, "harness", status));
       return 1;
     }
   }

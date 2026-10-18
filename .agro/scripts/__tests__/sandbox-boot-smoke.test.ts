@@ -24,6 +24,7 @@ function fixture(
     noInstallableTools?: boolean;
     pid1?: string;
     readyFileMissing?: boolean;
+    clockExpiresAfterOnePoll?: boolean;
   } = {},
 ) {
   const runtimeUid = opts.runtimeUid ?? HOST_UID;
@@ -39,7 +40,7 @@ function fixture(
   const compose = join(dir, "compose.sh");
   writeFileSync(
     compose,
-    `#!/usr/bin/env bash
+    `#!/bin/bash
 printf '%s\n' "$*" >> ${JSON.stringify(composeLog)}
 if [ "$1" = "ps" ] && [ "\${2:-}" = "-q" ]; then
   printf 'cid-123\n'
@@ -57,12 +58,12 @@ exit 0
   const docker = join(bin, "docker");
   writeFileSync(
     docker,
-    `#!/usr/bin/env bash
+    `#!/bin/bash
 printf '%s\n' "$*" >> ${JSON.stringify(dockerLog)}
 case "$1" in
   exec)
     count=0
-    [ -f ${JSON.stringify(execCount)} ] && count=$(cat ${JSON.stringify(execCount)})
+    [ -f ${JSON.stringify(execCount)} ] && read -r count < ${JSON.stringify(execCount)}
     count=$((count + 1))
     printf '%s' "$count" > ${JSON.stringify(execCount)}
     if [ "${opts.dockerExecAlwaysFails ? "1" : "0"}" = "1" ] || [ "$count" -lt 2 ]; then
@@ -148,6 +149,22 @@ exit 2
   );
   chmodSync(docker, 0o755);
 
+  if (opts.clockExpiresAfterOnePoll) {
+    const clockCount = join(dir, "clock-count");
+    const date = join(bin, "date");
+    writeFileSync(
+      date,
+      `#!/bin/bash
+count=0
+[ -f ${JSON.stringify(clockCount)} ] && read -r count < ${JSON.stringify(clockCount)}
+count=$((count + 1))
+printf '%s' "$count" > ${JSON.stringify(clockCount)}
+if [ "$count" -le 2 ]; then echo 1000; else echo 1001; fi
+`,
+    );
+    chmodSync(date, 0o755);
+  }
+
   return { dir, bin, compose, composeLog, dockerLog };
 }
 
@@ -159,7 +176,7 @@ function runSmoke(fx: ReturnType<typeof fixture>, extraEnv: Record<string, strin
       PATH: `${fx.bin}:${process.env.PATH}`,
       BOOT_SMOKE_COMPOSE: fx.compose,
       BOOT_SMOKE_TIMEOUT_SECONDS: "3",
-      BOOT_SMOKE_INTERVAL_SECONDS: "1",
+      BOOT_SMOKE_INTERVAL_SECONDS: "0",
       SANDBOX_NAME: "agro-test",
       NPM_USER_PREFIX: PREFIX,
       ...extraEnv,
@@ -315,7 +332,7 @@ describe("sandbox boot smoke", { timeout: SMOKE_TEST_TIMEOUT_MS }, () => {
   });
 
   it("prints compose, health, and log diagnostics on timeout", () => {
-    const fx = fixture({ dockerExecAlwaysFails: true });
+    const fx = fixture({ dockerExecAlwaysFails: true, clockExpiresAfterOnePoll: true });
 
     const result = runSmoke(fx, { BOOT_SMOKE_TIMEOUT_SECONDS: "0" });
 
