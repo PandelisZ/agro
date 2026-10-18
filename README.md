@@ -14,7 +14,7 @@
   <img src=".github/assets/mifune-banner.jpg" alt="AGRO" width="100%">
 </p>
 
-**AGRO gives AI coding agents a workspace you control.** It packages a Docker sandbox and shared agent procedures. You choose the coding harness: Claude Code, Codex, Pi, or another.
+**AGRO gives AI coding agents a workspace you control.** It packages a Docker sandbox and shared agent procedures. Run one or more coding harnesses side by side in one workspace, for example Claude Code, Codex, and Pi. AGRO supports every harness in the [harness table](#4-install-a-coding-harness) below.
 
 Develop on your laptop or a remote VM. Install tools and harnesses on demand, organize parallel changes in separate git worktrees, and use shared skills and evidence checks to guide the work.
 
@@ -156,12 +156,15 @@ claude
 | [Codex](docs/harnesses/codex.md) | `codex` | Install on demand |
 | [Pi](docs/harnesses/pi.md) | `pi` | Install on demand |
 | [OpenCode](docs/harnesses/opencode.md) | `opencode` | Install on demand |
+| [OpenClaw](docs/harnesses/openclaw.md) | `openclaw` | Install on demand |
 | [Grok Build](docs/harnesses/grok-build.md) | `grok-build` | Install on demand |
 | [Hermes](docs/harnesses/hermes.md) | `hermes` | Install on demand |
 | [Muse Code](docs/harnesses/muse-code.md) | `muse-code` | Install on demand |
+| [Antigravity CLI](docs/harnesses/antigravity-cli.md) | `antigravity-cli` | Install on demand |
+| [fx](docs/harnesses/fx.md) | `fx` | Install on demand |
 | [T3 Code](docs/harnesses/t3code.md) | `t3code` | Run on demand via `npx` |
 
-Use `agro harness install <id>` for other installable harnesses. Follow the linked
+Use `agro harness install <id>` to install any harness in the table. Follow the linked
 guides for authentication and launch commands. T3 Code requires an authenticated
 Claude Code, Codex, or OpenCode provider.
 
