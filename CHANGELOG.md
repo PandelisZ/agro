@@ -8,6 +8,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+### Added
+- Add `/rsi` to run a fixed number of measured improvement loops on one scope, keep only edits that beat the noise margin without a holdout loss, and log each loop in `rsi.tsv` ([#1465](https://github.com/mifunedev/agro/pull/1465)).
+
 ## [0.24.1] - 2026-10-18
 
 ### Changed
