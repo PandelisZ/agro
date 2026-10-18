@@ -8,7 +8,9 @@ AGRO installs no agent CLI at boot. A harness enters the sandbox only when you r
 
 Inside the sandbox, run `agro tool install herdr`, then run `herdr`, then launch whichever agent you prefer from its panes and switch between them at any time. Herdr is for interactive agents. Named tmux sessions are for AGRO's headless gateway and tunnel infrastructure.
 
-AGRO is the harness; the **agent** is your call. To go beyond the catalog, install via `npm` / `pip` / `cargo` inside the sandbox or edit the Dockerfile. The product surface is one developer, one project, one agent — not racing or stacking multiple CLIs against each other.
+AGRO is the harness; the **agent** is your call. To go beyond the catalog, install via `npm` / `pip` / `cargo` inside the sandbox or edit the Dockerfile.
+
+Every harness gets the same workspace layout, skills, and hooks, so two or more agents can work in one environment at the same time. For example, a developer uses Claude Code in a Herdr pane to build the environment. At the same time, Hermes or Pi answers in Slack for the same environment from its own named tmux session. See [Slack](../integrations/slack.md).
 
 ## Installing a harness
 
