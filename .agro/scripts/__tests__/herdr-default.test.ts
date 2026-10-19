@@ -22,9 +22,12 @@ describe("Pi clipboard defaults in the canonical zshrc", () => {
     try {
       mkdirSync(path.join(home, "harness/.agro/install"), { recursive: true });
       writeFileSync(path.join(home, "harness/.agro/install/banner.sh"), ":\n");
+      mkdirSync(path.join(home, "fpath"));
+      writeFileSync(path.join(home, "fpath/compinit"), 'print -r -- fixture-compinit > "$HOME/compinit-used"\n');
+      writeFileSync(path.join(home, "fpath/vcs_info"), ":\n");
       const result = spawnSync("zsh", [
         interactive ? "-fic" : "-fc",
-        'source "$1"; printf "shell:<%s>:<%s>\\n" "${+PI_CLIPBOARD_OSC52}" "$PI_CLIPBOARD_OSC52"; /bin/sh -c \'printf "child:<%s>:<%s>\\n" "${PI_CLIPBOARD_OSC52+x}" "$PI_CLIPBOARD_OSC52"\'',
+        'fpath=("$HOME/fpath"); source "$1"; printf "shell:<%s>:<%s>\\n" "${+PI_CLIPBOARD_OSC52}" "$PI_CLIPBOARD_OSC52"; /bin/sh -c \'printf "child:<%s>:<%s>\\n" "${PI_CLIPBOARD_OSC52+x}" "$PI_CLIPBOARD_OSC52"\'',
         "clipboard-test",
         path.join(repoRoot, ".agro/install/.zshrc"),
       ], {
@@ -36,6 +39,7 @@ describe("Pi clipboard defaults in the canonical zshrc", () => {
       expect(result.error, "These functional tests require zsh on the test runner").toBeUndefined();
       expect(result.stderr).toBe("");
       expect(result.status).toBe(0);
+      expect(readFileSync(path.join(home, "compinit-used"), "utf8")).toBe("fixture-compinit\n");
       return result.stdout;
     } finally {
       rmSync(home, { recursive: true, force: true });
