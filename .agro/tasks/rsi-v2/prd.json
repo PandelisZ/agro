@@ -92,8 +92,8 @@
         "Typecheck passes"
       ],
       "priority": 4,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Executed: two runs on rsi/v2-drill with --slug v2-drill-a and v2-drill-b, --loops 2 each; separate ledgers; all rows 7 columns; keep rows margin 0, reject row -; REVIEW lines 2 (A) and 1 (B); third invocation --slug v2-drill-a stopped BLOCKED Finished run after report; drill worktrees and branches 0 remaining. Typecheck exit 0. Operator approved the fixture before the runs.",
       "dependsOn": [
         "US-001",
         "US-002",
@@ -101,7 +101,8 @@
       ],
       "files": [
         ".agro/tasks/rsi-v2/evidence/manual-review.md"
-      ]
+      ],
+      "commit": "2bd37be3"
     }
   ]
 }
