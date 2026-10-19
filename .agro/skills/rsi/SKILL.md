@@ -85,6 +85,13 @@ failed check. Write no ledger row and dispatch no worker.
 | Direction | `--direction` is not `min` or `max`. |
 | Clean tree | The run checkout has uncommitted changes. |
 
+If the `Finished run` check fails, do these steps before you stop:
+
+1. Clean up loop `<N>` with [Resume](#5-resume) step 7, with `<k>` = `<N>`.
+2. Print the report of [Report the result](#45-report-the-result) from the
+   committed ledger.
+3. Stop with `BLOCKED`. Give a new run a new `--slug`.
+
 Two paths overlap when the two paths are equal, or when one path is a directory
 that holds the other path.
 
