@@ -78,6 +78,7 @@ function launch(skill: Skill, args: string[], env: Record<string, string> = {}) 
       MATRIX_OUT: skill.out,
       FAKE_STATE: skill.state,
       POLL_INTERVAL: "0.1",
+      DISCONNECT_WAIT: "0.1",
       REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${EXTRA_DIR}:${PARTIAL_DIR}`,
       ...env,
     },

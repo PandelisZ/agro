@@ -4,6 +4,7 @@ MATRIX_OUT=${MATRIX_OUT:-$PWD/matrix-evidence}
 MATRIX_TAG=${MATRIX_TAG:-agro-matrix}
 STATE_DIR="$MATRIX_OUT/.state"
 POLL_INTERVAL=${POLL_INTERVAL:-15}
+DISCONNECT_WAIT=${DISCONNECT_WAIT:-5}
 REQUIRED_FUNCTIONS=(preflight create exec destroy list)
 mkdir -p "$MATRIX_OUT" "$STATE_DIR"
 
@@ -72,7 +73,7 @@ row_hook() {
 driver_rows() {
   echo "== driver rows"
   px exec "$NAME" "tmux new-session -d -s r09 'sleep 900' && echo started" >/dev/null 2>&1
-  sleep 5
+  sleep "$DISCONNECT_WAIT"
   px exec "$NAME" "tmux has-session -t r09" >/dev/null 2>&1 && echo "RESULT R09-disconnect PASS tmux session survives the client exit" || echo "RESULT R09-disconnect FAIL tmux session gone after the client exit"
   row_hook row_ssh R10-ssh-inbound
   row_hook row_https R11-https-port
