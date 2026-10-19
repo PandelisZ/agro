@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { readFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 
@@ -13,6 +15,56 @@ function expectBefore(text: string, earlier: string, later: string): void {
   expect(laterAt).toBeGreaterThan(-1);
   expect(earlierAt).toBeLessThan(laterAt);
 }
+
+describe("Pi clipboard defaults in the canonical zshrc", () => {
+  function sourceZshrc(interactive: boolean, variables: Record<string, string>): string {
+    const home = mkdtempSync(path.join(tmpdir(), "agro-pi-clipboard-"));
+    try {
+      mkdirSync(path.join(home, "harness/.agro/install"), { recursive: true });
+      writeFileSync(path.join(home, "harness/.agro/install/banner.sh"), ":\n");
+      mkdirSync(path.join(home, "fpath"));
+      writeFileSync(path.join(home, "fpath/compinit"), 'print -r -- fixture-compinit > "$HOME/compinit-used"\n');
+      writeFileSync(path.join(home, "fpath/vcs_info"), ":\n");
+      const result = spawnSync("zsh", [
+        interactive ? "-fic" : "-fc",
+        'fpath=("$HOME/fpath"); source "$1"; printf "shell:<%s>:<%s>\\n" "${+PI_CLIPBOARD_OSC52}" "$PI_CLIPBOARD_OSC52"; /bin/sh -c \'printf "child:<%s>:<%s>\\n" "${PI_CLIPBOARD_OSC52+x}" "$PI_CLIPBOARD_OSC52"\'',
+        "clipboard-test",
+        path.join(repoRoot, ".agro/install/.zshrc"),
+      ], {
+        cwd: home,
+        env: { HOME: home, ZDOTDIR: home, PATH: "/usr/bin:/bin", TERM: "dumb", ...variables },
+        encoding: "utf8",
+        timeout: 10_000,
+      });
+      expect(result.error, "These functional tests require zsh on the test runner").toBeUndefined();
+      expect(result.stderr).toBe("");
+      expect(result.status).toBe(0);
+      expect(readFileSync(path.join(home, "compinit-used"), "utf8")).toBe("fixture-compinit\n");
+      return result.stdout;
+    } finally {
+      rmSync(home, { recursive: true, force: true });
+    }
+  }
+
+  it("exports the default to children in an interactive Herdr pane", () => {
+    expect(sourceZshrc(true, { HERDR_PANE_ID: "test-pane" }))
+      .toBe("shell:<1>:<1>\nchild:<x>:<1>\n");
+  });
+
+  it.each(["0", "1", ""])("preserves an explicit value <%s>", (value) => {
+    expect(sourceZshrc(true, { HERDR_PANE_ID: "test-pane", PI_CLIPBOARD_OSC52: value }))
+      .toBe(`shell:<1>:<${value}>\nchild:<x>:<${value}>\n`);
+  });
+
+  it.each([{}, { HERDR_PANE_ID: "" }])("leaves the variable unset without a nonempty pane marker: %j", (variables) => {
+    expect(sourceZshrc(true, variables)).toBe("shell:<0>:<>\nchild:<>:<>\n");
+  });
+
+  it("leaves the variable unset in a noninteractive Herdr shell", () => {
+    expect(sourceZshrc(false, { HERDR_PANE_ID: "test-pane" }))
+      .toBe("shell:<0>:<>\nchild:<>:<>\n");
+  });
+});
 
 describe("default Herdr integration", () => {
   // #906: the pin moved out of the Dockerfile and into the tool catalog, which

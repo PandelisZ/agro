@@ -31,6 +31,10 @@ alias claude='claude --dangerously-skip-permissions'
 alias codex='codex --dangerously-bypass-approvals-and-sandbox'
 alias agy='agy --dangerously-skip-permissions'
 
+if [[ -o interactive && -n "$HERDR_PANE_ID" && ${+PI_CLIPBOARD_OSC52} == 0 ]]; then
+  export PI_CLIPBOARD_OSC52=1
+fi
+
 cd ~/harness 2>/dev/null
 
 source "${AGRO_PROJECT_ROOT:-$HOME/harness}/.agro/install/banner.sh" 2>/dev/null
