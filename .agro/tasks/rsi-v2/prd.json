@@ -19,12 +19,13 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Commits 7b4abde9 and repair 6b34746d (finished-run cleanup and report). Executed: ste-check exit 0, pnpm run typecheck exit 0 on the task branch. Reasoned: --slug row line 47; default from branch slug lines 62-63; Slug and Finished run Preflight rows lines 77-78; ledger, worker branches, commit messages use <run-slug> (0 bare <slug> left); PR path multi-run paragraph line 343.",
       "dependsOn": [],
       "files": [
         ".agro/skills/rsi/SKILL.md"
-      ]
+      ],
+      "commit": "6b34746d"
     },
     {
       "id": "US-002",
@@ -41,14 +42,15 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Executed: ste-check exit 0, typecheck exit 0. Reasoned: margin column line 129; baseline margin line 113; two readings after cherry-pick step 4.4.2 lines 238-242; reject holds -; current noise margin lines 149-151; resume BLOCKED under seven columns in Resume step 2.",
       "dependsOn": [
         "US-001"
       ],
       "files": [
         ".agro/skills/rsi/SKILL.md"
-      ]
+      ],
+      "commit": "b36ac663"
     },
     {
       "id": "US-003",
@@ -65,15 +67,16 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Executed: wc -l 362 (<500), ste-check exit 0, typecheck exit 0. Reasoned: worker line in brief; keep reason ; keeps: line 217; REVIEW line 273 and the statement line 277; PR path step 8 line 340; CHANGELOG ### Changed entry 224 chars.",
       "dependsOn": [
         "US-002"
       ],
       "files": [
         ".agro/skills/rsi/SKILL.md",
         "CHANGELOG.md"
-      ]
+      ],
+      "commit": "d9c822a3"
     },
     {
       "id": "US-004",
