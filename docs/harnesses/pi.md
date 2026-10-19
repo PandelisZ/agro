@@ -41,6 +41,39 @@ ssh -L 1455:localhost:1455 user@your-host
 
 This login flow is Pi-specific. Codex has its own headless path (`codex login --device-auth`) and needs no port 1455. See [Codex § Authentication](./codex.md#authentication).
 
+## Clipboard in Herdr
+
+Pi supports `PI_CLIPBOARD_OSC52=1` from version `1.2.0`; the inspected version is `1.3.0`.
+This setting adds OSC52 terminal forwarding after local clipboard attempts.
+With `DISPLAY` set, missing `xclip` or `xsel` can cause clipboard errors without this setting.
+OSC52 sends copied text to the client terminal, not just the sandbox clipboard.
+The terminal and every intermediary must support OSC52 clipboard writes.
+See the [upstream environment-variable reference](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/environment-variables.md#pi-process-configuration).
+
+The canonical AGRO `.zshrc` exports this default only in interactive shells with a nonempty `HERDR_PANE_ID`.
+AGRO preserves explicit values, including `0`, `1`, and an empty value.
+`PI_CLIPBOARD_OSC52=0` disables this AGRO default, not Pi's automatic SSH or headless fallback.
+
+AGRO does not overwrite `.zshrc` in persistent homes, so existing installations do not receive this default automatically.
+In an existing shell or custom home, launch Pi inside the sandbox with OSC52 forwarding:
+
+```bash
+PI_CLIPBOARD_OSC52=1 pi
+```
+
+For future shells in a custom home, add this opt-in snippet to that home's `.zshrc`:
+
+```zsh
+if [[ -o interactive && -n "$HERDR_PANE_ID" && ${+PI_CLIPBOARD_OSC52} == 0 ]]; then
+  export PI_CLIPBOARD_OSC52=1
+fi
+```
+
+To verify end-to-end copying, copy text in Pi and paste into an application on your computer.
+Do not use sandbox `xclip` as proof of client clipboard delivery.
+The [regression tests](../../.agro/scripts/__tests__/herdr-default.test.ts) source the canonical `.zshrc` in isolated zsh processes.
+These tests verify environment defaults, not actual clipboard delivery.
+
 ## Upstream
 
 See [`@earendil-works/pi-coding-agent` on npm](https://www.npmjs.com/package/@earendil-works/pi-coding-agent).

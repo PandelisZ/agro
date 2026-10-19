@@ -14,6 +14,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 ### Changed
 - Give `/rsi` a `--slug <run-slug>` input, measure the noise margin again after each kept edit in a `margin` ledger column, and print a `REVIEW` line for each kept edit ([#1471](https://github.com/mifunedev/agro/pull/1471)).
 
+### Fixed
+- Enable Pi terminal clipboard forwarding by default in newly scaffolded interactive Herdr shells while preserving explicit overrides ([#1476](https://github.com/mifunedev/agro/issues/1476)).
+
 ## [0.24.1] - 2026-10-18
 
 ### Changed
