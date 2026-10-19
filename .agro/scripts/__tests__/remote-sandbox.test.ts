@@ -78,7 +78,7 @@ function launch(skill: Skill, args: string[], env: Record<string, string> = {}) 
       MATRIX_OUT: skill.out,
       FAKE_STATE: skill.state,
       POLL_INTERVAL: "0.02",
-      DISCONNECT_WAIT: "0.1",
+      DISCONNECT_WAIT: "0",
       REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${EXTRA_DIR}:${PARTIAL_DIR}`,
       ...env,
     },
@@ -239,7 +239,7 @@ describe.concurrent("remote-sandbox driver run", { timeout: 30_000 }, () => {
     await waitFor(() => existsSync(log) && readFileSync(log, "utf8").includes("CHECK hanging"));
 
     run.child.kill("SIGHUP");
-    await new Promise((resolve) => setTimeout(resolve, 100));
+    await new Promise((resolve) => setTimeout(resolve, 20));
     expect(run.child.exitCode).toBeNull();
     expect(run.child.signalCode).toBeNull();
 

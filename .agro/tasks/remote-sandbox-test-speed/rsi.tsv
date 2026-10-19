@@ -2,3 +2,4 @@
 0	fce2083f6e78c40119d19f3aabff9108781653cd	5181	0	baseline	evaluator=vitest.config.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts .agro/scripts/__tests__/fixtures/remote-sandbox/	5
 1	72299e078cdfdbfe77d57dc1e4233dc8e31acc52	738	0	keep	metric -4448 over best, holdout 0 <= 0; keeps: R09 still waits five seconds after the tmux client exits before it checks that the session survives	8
 2	1e4ba1ad322ff6646461ef6d9869a167a73f6a2d	275	0	keep	metric -463 over best, holdout 0 <= 0; keeps: remote-sandbox driver still ignores SIGHUP and destroys the VM exactly once on SIGTERM	1
+3	2e64284106f09fa3fdc80c00d8323c40bbc06d0f	221	0	keep	metric -54 over best, holdout 0 <= 0; keeps: Driver rows still report R09 and the driver still survives SIGHUP with shorter test waits	17
