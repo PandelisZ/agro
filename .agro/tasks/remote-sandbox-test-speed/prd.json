@@ -42,14 +42,15 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Executed: evidence/manual-review.md holds preflight, baseline, 4 loop evaluations, report, worker worktree and branch deletions, and two review checks (0 of 40 runs failed; SIGHUP test fails with the HUP trap removed at 5bb58d95 and dd2f763b). The operator confirmed all four REVIEW lines (reply: confirm + doc row); no kept edit reverted. PR Manual review lists each REVIEW line; manual-review-check.sh exit 0 (see Close). Typecheck exit 0.",
       "dependsOn": [
         "US-001"
       ],
       "files": [
         ".agro/tasks/remote-sandbox-test-speed/evidence/manual-review.md"
-      ]
+      ],
+      "commit": "0f7ce805"
     }
   ]
 }
