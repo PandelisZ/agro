@@ -20,14 +20,15 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Executed on task branch 5bb58d95: ledger 2 baseline + 4 loop rows, all 7 columns; git diff --quiet fce2083f -- <evaluator paths> exit 0; git diff --name-only fce2083f HEAD lists the two scope paths and rsi.tsv; margin values 5, 8, 1, 17, 3 (>0); holdout rerun 0 equals current best 0; metric rerun 143 < 5186 - 5; report printed 4 REVIEW lines; pnpm run typecheck exit 0. Reasoned: /rsi invoked with --loops 4 --slug remote-sandbox-test-speed and the plan inputs (first baseline reason holds the verbatim invocation).",
       "dependsOn": [],
       "files": [
         ".agro/scripts/__tests__/remote-sandbox.test.ts",
         ".agro/skills/remote-sandbox/scripts/lib.sh",
         ".agro/tasks/remote-sandbox-test-speed/rsi.tsv"
-      ]
+      ],
+      "commit": "5bb58d95"
     },
     {
       "id": "US-002",
