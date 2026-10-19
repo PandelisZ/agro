@@ -77,7 +77,7 @@ function launch(skill: Skill, args: string[], env: Record<string, string> = {}) 
       ...base,
       MATRIX_OUT: skill.out,
       FAKE_STATE: skill.state,
-      POLL_INTERVAL: "0.1",
+      POLL_INTERVAL: "0.02",
       DISCONNECT_WAIT: "0.1",
       REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${EXTRA_DIR}:${PARTIAL_DIR}`,
       ...env,
@@ -108,7 +108,7 @@ async function waitFor(predicate: () => boolean, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   while (!predicate()) {
     if (Date.now() > deadline) throw new Error("timed out waiting for condition");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
@@ -239,7 +239,7 @@ describe.concurrent("remote-sandbox driver run", { timeout: 30_000 }, () => {
     await waitFor(() => existsSync(log) && readFileSync(log, "utf8").includes("CHECK hanging"));
 
     run.child.kill("SIGHUP");
-    await new Promise((resolve) => setTimeout(resolve, 400));
+    await new Promise((resolve) => setTimeout(resolve, 100));
     expect(run.child.exitCode).toBeNull();
     expect(run.child.signalCode).toBeNull();
 
