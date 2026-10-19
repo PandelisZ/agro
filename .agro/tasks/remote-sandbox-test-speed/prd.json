@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1472-remote-sandbox-test-speed",
+  "description": "rsi run on remote-sandbox test speed: one /rsi version 2 run on the PR path with a timing metric, to test a nonzero noise margin and the REVIEW gate.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Run 4 loops on the remote-sandbox test speed",
+      "description": "As the operator, I want one real `/rsi` run with a timing metric on the PR path so that the run tests a nonzero margin.",
+      "acceptanceCriteria": [
+        "The advisor runs `/rsi` on `task/<N>-remote-sandbox-test-speed` with `--loops 4` and `--slug remote-sandbox-test-speed`, with the scope, metric, holdout, and direction in the Summary.",
+        "`.agro/tasks/remote-sandbox-test-speed/rsi.tsv` holds 2 baseline rows and 4 loop rows. Each row has 7 columns.",
+        "`git diff --quiet <start-commit> -- vitest.config.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts .agro/scripts/__tests__/fixtures/remote-sandbox/` exits 0 on the task branch.",
+        "`git diff --name-only <start-commit> HEAD` lists only the two scope paths and `.agro/tasks/remote-sandbox-test-speed/rsi.tsv`.",
+        "The ledger holds at least one `margin` value greater than `0`.",
+        "After loop 4, the advisor runs the holdout on the task branch. The holdout prints the holdout value of the current best.",
+        "After loop 4, the advisor runs the metric on the task branch. If the ledger holds a `keep` row, the metric is lower than the first baseline metric by more than the baseline noise margin.",
+        "The run report prints one `REVIEW` line for each `keep` row.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [],
+      "files": [
+        ".agro/scripts/__tests__/remote-sandbox.test.ts",
+        ".agro/skills/remote-sandbox/scripts/lib.sh",
+        ".agro/tasks/remote-sandbox-test-speed/rsi.tsv"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want the run transcript and the `REVIEW` lines in one file so that I can confirm each kept edit.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/remote-sandbox-test-speed/evidence/manual-review.md` holds the preflight output, the baseline readings, each loop evaluation, the run report, and the deletion of each worker worktree and branch.",
+        "The PR `## Manual review` section lists each `REVIEW` line.",
+        "The operator confirms each `REVIEW` line before the merge. The advisor reverts each kept edit that fails the review, and records the revert in `## Lessons`.",
+        "`bash .agro/skills/git/scripts/manual-review-check.sh <pr-body-file>` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/tasks/remote-sandbox-test-speed/evidence/manual-review.md"
+      ]
+    }
+  ]
+}
