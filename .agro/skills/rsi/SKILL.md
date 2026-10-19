@@ -102,13 +102,14 @@ prints a number, the reading is still not valid.
 2. Run the metric command and the holdout command on `<start-commit>`.
 3. Run the metric command and the holdout command on `<start-commit>` a second time.
 4. If a baseline reading is not valid, stop with `BLOCKED`. Write no ledger row.
-5. Write the two readings to `.agro/tasks/<run-slug>/rsi.tsv` as two rows with loop `0`.
+5. Write the two readings to `.agro/tasks/<run-slug>/rsi.tsv` as two rows with
+   loop `0`. The `margin` of the second row holds the baseline noise margin.
 6. Commit the two baseline rows. Use the message `task: rsi <run-slug> baseline`.
 
 ### The ledger
 
 The ledger is a tab-separated file. The ledger has no header row. Each row has
-these six columns in this order:
+these seven columns in this order:
 
 | Column | Value |
 |---|---|
@@ -118,6 +119,7 @@ these six columns in this order:
 | `holdout` | The number that the holdout command printed. |
 | `decision` | `baseline`, `keep`, or `reject`. |
 | `reason` | One line with no tab character. |
+| `margin` | The noise margin for a `keep` row and for the second baseline row. `-` for a `reject` row and for the first baseline row. |
 
 The `reason` of the first baseline row holds the verbatim `/rsi` invocation. The
 `reason` of the second baseline row holds `evaluator=<evaluator-paths>`, with
@@ -134,8 +136,12 @@ git add -f .agro/tasks/<run-slug>/rsi.tsv
 
 ### Noise margin and current best
 
-The **noise margin** is the absolute difference between the two baseline metric
-values.
+The **baseline noise margin** is the absolute difference between the two
+baseline metric values.
+
+The **current noise margin** is the `margin` of the last `keep` row. When no
+`keep` row exists, the current noise margin is the `margin` of the second
+baseline row.
 
 The **current best** is the metric and the holdout of the last `keep` row. When
 no `keep` row exists, the current best is the metric and the holdout of the
@@ -204,27 +210,32 @@ evaluator paths. Write no row for the loop.
 
 The **keep rule** has two parts. Both parts must hold:
 
-1. The metric beats the current best by more than the noise margin. For `min`,
+1. The metric beats the current best by more than the current noise margin.
+   The value `margin` is the current noise margin. For `min`,
    `best - metric > margin`. For `max`, `metric - best > margin`.
 2. The holdout does not get worse than the holdout of the current best.
 
-A tie rejects. A gain equal to the noise margin is a tie. A rejected loop
+A tie rejects. A gain equal to the current noise margin is a tie. A rejected loop
 counts toward `<N>`. The advisor never repairs a rejected edit.
 
 ### 4.4 Record and commit
 
-Do these steps in this order: measure, append the row, commit, delete the
-worker branch.
+Do these steps in this order: measure, apply a `keep` edit, measure the
+margin, append the row, commit, delete the worker branch.
 
 1. On a `keep` decision, apply the worker edit to the run checkout without a
    commit: `git cherry-pick --no-commit <run-head>..rsi/<run-slug>-loop-<k>`.
-2. Append the loop row to `.agro/tasks/<run-slug>/rsi.tsv`. The `commit` field holds
+2. On a `keep` decision, run the metric command two times in the run checkout.
+   If a reading is not valid, stop the run with `BLOCKED`. Write no row for the
+   loop. The `margin` of the `keep` row holds the absolute difference of the two
+   readings. The `margin` of a `reject` row holds `-`.
+3. Append the loop row to `.agro/tasks/<run-slug>/rsi.tsv`. The `commit` field holds
    the measured worker commit.
-3. Stage the row with `git add -f .agro/tasks/<run-slug>/rsi.tsv`.
-4. Commit with the message `task: rsi <run-slug> loop <k> <decision>`.
-5. Remove the worker worktree with the REMOVE procedure in
+4. Stage the row with `git add -f .agro/tasks/<run-slug>/rsi.tsv`.
+5. Commit with the message `task: rsi <run-slug> loop <k> <decision>`.
+6. Remove the worker worktree with the REMOVE procedure in
    [`/worktrees`](../worktrees/SKILL.md).
-6. Delete the worker branch:
+7. Delete the worker branch:
 
    ```bash
    bash .agro/scripts/git-maintenance.sh branch-delete rsi/<run-slug>-loop-<k>
@@ -255,6 +266,8 @@ run branch is the only trusted state. Read nothing else.
    interrupted loop can leave a staged worker edit and an uncommitted row.
 2. Read the ledger from the last commit of the run branch:
    `git show HEAD:.agro/tasks/<run-slug>/rsi.tsv`.
+   If a ledger row holds fewer than seven columns, stop with `BLOCKED`. A
+   version 1 ledger has six columns.
 3. If the ledger holds fewer than two baseline rows, discard the ledger and start
    again at [Preflight](#2-preflight).
 4. Read the invocation from the `reason` of the first baseline row. Read the
