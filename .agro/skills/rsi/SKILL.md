@@ -167,6 +167,8 @@ Worker brief:
 - Never read `.agro/tasks/<run-slug>/`.
 - Work only in the execution directory `<worker-worktree>`.
 - Make one commit on `rsi/<run-slug>-loop-<k>`. Never push.
+- Write one line that names the behavior that the edit keeps. Use the line as
+  the commit subject. Report the line.
 - Never write `prd.json`.
 - Use no bare `git stash` or `git stash pop`. The stash stack is shared with
   other sessions.
@@ -205,7 +207,7 @@ evaluator paths. Write no row for the loop.
 | A changed file lies outside `<scope-paths>`. | `reject` | `edit outside scope` |
 | A command exits nonzero. | `reject` | `metric or holdout command failed` |
 | A command prints no single number. | `reject` | `metric or holdout printed no single number` |
-| The keep rule holds. | `keep` | The gain over the current best. |
+| The keep rule holds. | `keep` | The gain over the current best, then `; keeps: <worker line>`. |
 | Otherwise | `reject` | The failed part of the keep rule. |
 
 The **keep rule** has two parts. Both parts must hold:
@@ -214,6 +216,8 @@ The **keep rule** has two parts. Both parts must hold:
    The value `margin` is the current noise margin. For `min`,
    `best - metric > margin`. For `max`, `metric - best > margin`.
 2. The holdout does not get worse than the holdout of the current best.
+
+The `<worker line>` is the subject of the measured worker commit.
 
 A tie rejects. A gain equal to the current noise margin is a tie. A rejected loop
 counts toward `<N>`. The advisor never repairs a rejected edit.
@@ -255,6 +259,16 @@ RESULT <retained gain|no improvement>: metric <baseline> -> <best>, holdout <bas
 When one or more `keep` rows exist, use `retained gain`. Otherwise, use
 `no improvement`. A `no improvement` result is a valid result. Never claim a
 gain that the ledger does not record.
+
+After the result line, print one line for each `keep` row, in loop order:
+
+```text
+REVIEW loop <k> <commit>: <worker line>
+```
+
+Take `<k>` and `<commit>` from the `keep` row. Take `<worker line>` from the
+text after `; keeps: ` in the `reason`. Then print this statement: "The holdout cannot confirm intent. A person confirms each REVIEW
+line before a merge."
 
 ## 5. Resume
 
@@ -316,7 +330,8 @@ run branch is the only trusted state. Read nothing else.
 6. Write `passes`, `commit`, and `notes` for `US-001` in `prd.json`.
 7. Put the loop table from the ledger in the PR `Verification` section. Include
    the rejected loops.
-8. Write `## Lessons` in `prd.md` before the "Ready for review" step of `/git`.
+8. Put the `REVIEW` lines in the PR `## Manual review` section.
+9. Write `## Lessons` in `prd.md` before the "Ready for review" step of `/git`.
 
 One task branch can hold two or more runs. Run one run at a time. Give each run its
 own `--slug`. Each run then writes its own ledger.
