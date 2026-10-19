@@ -14,7 +14,7 @@ description: |
   Langfuse replay comparisons (use /behavioral-training), for a Claude-powered
   app with an eval set (use /claude-api hillclimb), for a scope without an
   external metric command, or for improvement of the /rsi procedure itself.
-argument-hint: "<scope-paths> --loops <N> --metric \"<cmd>\" --holdout \"<cmd>\" --direction <min|max>"
+argument-hint: "<scope-paths> --loops <N> --metric \"<cmd>\" --holdout \"<cmd>\" --direction <min|max> [--slug <run-slug>]"
 ---
 
 # RSI
@@ -44,6 +44,7 @@ Read these values from `$ARGUMENTS`:
 | `--metric "<cmd>"` | A shell command. The command prints one number on standard output. |
 | `--holdout "<cmd>"` | A shell command. The command prints one number. Workers never see this command. |
 | `--direction <min\|max>` | `min` when a lower metric is better. `max` when a higher metric is better. The holdout uses the same direction. |
+| `--slug <run-slug>` | Optional. The name of the run. The run slug names the ledger, the worker branches, and the commit messages. |
 
 If an input is missing, print the usage line from `argument-hint` and stop.
 
@@ -54,13 +55,17 @@ Resolve these values before preflight:
    command names.
 2. If you cannot name each evaluator path from the commands, ask the operator.
 3. Find the **run branch**. On the PR path, the run branch is the current
-   `task/<N>-<slug>` branch. On the local path, the run branch is `rsi/<slug>`.
+   `task/<N>-<branch-slug>` branch. On the local path, the run branch is
+   `rsi/<branch-slug>`.
    See [Delivery paths](#6-delivery-paths).
-4. Find the **slug** in the run branch name. The ledger is
-   `.agro/tasks/<slug>/rsi.tsv`.
+4. Find the **branch slug** `<branch-slug>` in the run branch name.
+5. Find the **run slug** `<run-slug>`. If `--slug` is present, the run slug is
+   the `--slug` value. Otherwise, the run slug is `<branch-slug>`. The ledger is
+   `.agro/tasks/<run-slug>/rsi.tsv`.
 
-If `.agro/tasks/<slug>/rsi.tsv` exists in the last commit of the run branch, go
-to [Resume](#5-resume).
+If `.agro/tasks/<run-slug>/rsi.tsv` exists in the last commit of the run branch
+and holds fewer than `<N>` loop rows, go to [Resume](#5-resume). Otherwise, go
+to [Preflight](#2-preflight).
 
 ## 2. Preflight
 
@@ -69,9 +74,11 @@ failed check. Write no ledger row and dispatch no worker.
 
 | Check | `BLOCKED` when |
 |---|---|
+| Slug | The run slug breaks the slug rules in [`/prd`](../prd/SKILL.md) section 2. |
+| Finished run | `.agro/tasks/<run-slug>/rsi.tsv` holds a finished run with `<N>` loop rows. Give a new run a new `--slug`. |
 | Number | The metric command or the holdout command gives no valid reading. |
 | Evaluator overlap | A scope path overlaps an evaluator path. |
-| Task folder overlap | A scope path or an evaluator path overlaps `.agro/tasks/<slug>/`. |
+| Task folder overlap | A scope path or an evaluator path overlaps `.agro/tasks/<run-slug>/`. |
 | Skill overlap | A scope path overlaps `.agro/skills/rsi/`. |
 | Evaluator | The operator cannot name the evaluator paths. |
 | Loops | `<N>` is not a positive whole number. |
@@ -95,8 +102,8 @@ prints a number, the reading is still not valid.
 2. Run the metric command and the holdout command on `<start-commit>`.
 3. Run the metric command and the holdout command on `<start-commit>` a second time.
 4. If a baseline reading is not valid, stop with `BLOCKED`. Write no ledger row.
-5. Write the two readings to `.agro/tasks/<slug>/rsi.tsv` as two rows with loop `0`.
-6. Commit the two baseline rows. Use the message `task: rsi <slug> baseline`.
+5. Write the two readings to `.agro/tasks/<run-slug>/rsi.tsv` as two rows with loop `0`.
+6. Commit the two baseline rows. Use the message `task: rsi <run-slug> baseline`.
 
 ### The ledger
 
@@ -122,7 +129,7 @@ The root `.gitignore` ignores each task file except `prd.md` and `prd.json`.
 Always stage the ledger with this command:
 
 ```bash
-git add -f .agro/tasks/<slug>/rsi.tsv
+git add -f .agro/tasks/<run-slug>/rsi.tsv
 ```
 
 ### Noise margin and current best
@@ -140,7 +147,7 @@ Run loops `1` to `<N>` in sequence. For loop `<k>`, do these steps.
 
 ### 4.1 Dispatch one worker
 
-1. Create the worker branch `rsi/<slug>-loop-<k>` from the run branch head in an
+1. Create the worker branch `rsi/<run-slug>-loop-<k>` from the run branch head in an
    isolated worktree. Use the "CREATE — new branch" procedure in
    [`/worktrees`](../worktrees/SKILL.md).
 2. Give the worker the brief below.
@@ -151,9 +158,9 @@ Worker brief:
 - Make one bounded edit that improves the metric. The metric command is
   `<metric-cmd>`. The direction is `<direction>`.
 - Edit only `<scope-paths>`. Edit no evaluator path.
-- Never read `.agro/tasks/<slug>/`.
+- Never read `.agro/tasks/<run-slug>/`.
 - Work only in the execution directory `<worker-worktree>`.
-- Make one commit on `rsi/<slug>-loop-<k>`. Never push.
+- Make one commit on `rsi/<run-slug>-loop-<k>`. Never push.
 - Never write `prd.json`.
 - Use no bare `git stash` or `git stash pop`. The stash stack is shared with
   other sessions.
@@ -161,7 +168,7 @@ Worker brief:
   heredoc, or another tool is a bypass. Report a blocked action as `BLOCKED`.
 
 The brief never names the holdout command. The read ban on
-`.agro/tasks/<slug>/` keeps the holdout command and the ledger away from the
+`.agro/tasks/<run-slug>/` keeps the holdout command and the ledger away from the
 worker. The ban is a prompt-level rule. No runtime enforces the rule.
 
 These worker rules come from the Worker brief of
@@ -182,7 +189,7 @@ evaluator paths. Write no row for the loop.
 ### 4.3 Measure
 
 1. Find the changed files with
-   `git diff --name-only <run-head> rsi/<slug>-loop-<k>`.
+   `git diff --name-only <run-head> rsi/<run-slug>-loop-<k>`.
 2. Run the metric command and the holdout command in the worker worktree.
 3. Decide with the rules below.
 
@@ -210,17 +217,17 @@ Do these steps in this order: measure, append the row, commit, delete the
 worker branch.
 
 1. On a `keep` decision, apply the worker edit to the run checkout without a
-   commit: `git cherry-pick --no-commit <run-head>..rsi/<slug>-loop-<k>`.
-2. Append the loop row to `.agro/tasks/<slug>/rsi.tsv`. The `commit` field holds
+   commit: `git cherry-pick --no-commit <run-head>..rsi/<run-slug>-loop-<k>`.
+2. Append the loop row to `.agro/tasks/<run-slug>/rsi.tsv`. The `commit` field holds
    the measured worker commit.
-3. Stage the row with `git add -f .agro/tasks/<slug>/rsi.tsv`.
-4. Commit with the message `task: rsi <slug> loop <k> <decision>`.
+3. Stage the row with `git add -f .agro/tasks/<run-slug>/rsi.tsv`.
+4. Commit with the message `task: rsi <run-slug> loop <k> <decision>`.
 5. Remove the worker worktree with the REMOVE procedure in
    [`/worktrees`](../worktrees/SKILL.md).
 6. Delete the worker branch:
 
    ```bash
-   bash .agro/scripts/git-maintenance.sh branch-delete rsi/<slug>-loop-<k>
+   bash .agro/scripts/git-maintenance.sh branch-delete rsi/<run-slug>-loop-<k>
    ```
 
 Each loop makes one commit on the run branch. A `keep` commit holds the worker
@@ -247,7 +254,7 @@ run branch is the only trusted state. Read nothing else.
    change with `bash .agro/scripts/git-maintenance.sh reset-hard HEAD`. An
    interrupted loop can leave a staged worker edit and an uncommitted row.
 2. Read the ledger from the last commit of the run branch:
-   `git show HEAD:.agro/tasks/<slug>/rsi.tsv`.
+   `git show HEAD:.agro/tasks/<run-slug>/rsi.tsv`.
 3. If the ledger holds fewer than two baseline rows, discard the ledger and start
    again at [Preflight](#2-preflight).
 4. Read the invocation from the `reason` of the first baseline row. Read the
@@ -261,23 +268,22 @@ run branch is the only trusted state. Read nothing else.
    1. If the worktree exists, remove the worktree with the REMOVE procedure in
       [`/worktrees`](../worktrees/SKILL.md).
    2. If the branch exists, delete the branch with
-      `bash .agro/scripts/git-maintenance.sh branch-delete rsi/<slug>-loop-<k>`.
-8. If `<k>` equals `<N>`, go to [Report the result](#45-report-the-result).
-9. If the branch `rsi/<slug>-loop-<k+1>` exists, measure that branch. Dispatch
+      `bash .agro/scripts/git-maintenance.sh branch-delete rsi/<run-slug>-loop-<k>`.
+8. If the branch `rsi/<run-slug>-loop-<k+1>` exists, measure that branch. Dispatch
    no new worker:
    1. If the worktree for that branch does not exist, create a worktree for the
       branch with the "CREATE — existing branch" procedure in
       [`/worktrees`](../worktrees/SKILL.md).
    2. Start at [Check the evaluator](#42-check-the-evaluator).
-10. Otherwise, dispatch loop `<k+1>` at [Dispatch one worker](#41-dispatch-one-worker).
+9. Otherwise, dispatch loop `<k+1>` at [Dispatch one worker](#41-dispatch-one-worker).
 
 ## 6. Delivery paths
 
 ### Local path
 
-1. Run `/rsi` on the branch `rsi/<slug>`. If the current branch is not a run
-   branch, create `rsi/<slug>` from the current head in an isolated worktree.
-   Make `<slug>` a kebab-case name from the first scope path.
+1. Run `/rsi` on the branch `rsi/<branch-slug>`. If the current branch is not a run
+   branch, create `rsi/<branch-slug>` from the current head in an isolated worktree.
+   Make `<branch-slug>` a kebab-case name from the first scope path.
 2. Write no `prd.json`. The task stays "not complete" under
    [`.agro/tasks/AGENTS.md`](../../tasks/AGENTS.md). That state is correct until
    the operator delivers the run.
@@ -291,13 +297,16 @@ run branch is the only trusted state. Read nothing else.
    rerun on the task branch and match the current best.
 2. The operator approves `prd.md`.
 3. The `/git` procedure "Draft PR for a task" opens the issue and creates
-   `task/<N>-<slug>`. The plan commit is the first commit.
-4. Run `/rsi` on `task/<N>-<slug>`. The loop commits land after the plan commit.
+   `task/<N>-<branch-slug>`. The plan commit is the first commit.
+4. Run `/rsi` on `task/<N>-<branch-slug>`. The loop commits land after the plan commit.
 5. After loop `<N>`, rerun the metric and the holdout on the task branch.
 6. Write `passes`, `commit`, and `notes` for `US-001` in `prd.json`.
 7. Put the loop table from the ledger in the PR `Verification` section. Include
    the rejected loops.
 8. Write `## Lessons` in `prd.md` before the "Ready for review" step of `/git`.
+
+One task branch can hold two or more runs. Run one run at a time. Give each run its
+own `--slug`. Each run then writes its own ledger.
 
 ### Rules that /rsi bends
 
