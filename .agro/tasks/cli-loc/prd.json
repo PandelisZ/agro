@@ -1,0 +1,139 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1482-cli-loc",
+  "description": "rsi run on CLI source size: a /rsi run of 5 loops lowers the TypeScript token count of the non-test CLI source with no loss of tests, types, or coverage.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add the token metric for the CLI source",
+      "description": "As the operator, I want a deterministic size metric that a layout change cannot lower, so that each kept loop removes real code.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/cli-loc/scope.txt` lists each path that `git ls-files .agro/cli/src | grep -v '/__tests__/'` prints at the plan commit, one path for each line.",
+        "`node .agro/tasks/cli-loc/measure-tokens.mjs` prints one whole number and exits 0. The number is the count of TypeScript tokens in the files of `scope.txt`, without comments and whitespace.",
+        "Two runs of `node .agro/tasks/cli-loc/measure-tokens.mjs` print the same number.",
+        "In a temporary worktree, a change of only whitespace and line breaks in one scope file leaves the printed number unchanged.",
+        "In a temporary worktree, the deletion of each comment in one scope file leaves the printed number unchanged.",
+        "In a temporary worktree, the deletion of the body of `.agro/cli/src/lib/tmux.ts` lowers the printed number.",
+        "The advisor removes each temporary worktree with `bash .agro/scripts/git-maintenance.sh worktree-remove <path>`.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "executed: scope diff vs git ls-files exit 0 (56 paths); node .agro/tasks/cli-loc/measure-tokens.mjs printed 74255 exit 0, second run 74255; temporary worktree at 78756f0f: whitespace-only change of lib/tmux.ts (file equal after deleting all whitespace) left 74255; deletion of the 6 comments in commands/lifecycle.ts left 74255; deletion of the body of lib/tmux.ts gave 73988 (lower by 267); temporary worktree removed with git-maintenance.sh worktree-remove; pnpm run typecheck exit 0. Advisor review rejected the first scanner-only version 58c1bbb4 (template text after ${...} swallowed code: tmux.ts 43 tokens vs 268 parse-tree leaves); repair 78756f0f counts parse-tree leaf tokens, skipping JSDoc nodes.",
+      "dependsOn": [],
+      "files": [
+        ".agro/tasks/cli-loc/measure-tokens.mjs",
+        ".agro/tasks/cli-loc/scope.txt"
+      ],
+      "commit": "78756f0f"
+    },
+    {
+      "id": "US-002",
+      "title": "Run 5 loops on the CLI source size",
+      "description": "As the operator, I want a `/rsi` run on the CLI source so that the CLI gets smaller with no loss of tests or coverage.",
+      "acceptanceCriteria": [
+        "Before preflight, the advisor runs `vitest run --coverage` at the start commit and writes the measured passed-test count, uncovered-line count, and uncovered-branch count into the holdout command in place of `<P0>`, `<U0>`, and `<B0>`.",
+        "The advisor runs `/rsi` on `task/<N>-cli-loc` with `--loops 5` and `--slug cli-loc-rsi`, with the scope, metric, holdout, and direction in the Summary.",
+        "`.agro/tasks/cli-loc-rsi/rsi.tsv` holds 2 baseline rows and 5 loop rows. Each row has 7 columns.",
+        "`git diff --quiet <start-commit> -- <evaluator-paths>` exits 0 on the task branch.",
+        "`git diff --name-only <start-commit> HEAD` lists only paths in `.agro/tasks/cli-loc/scope.txt` and `.agro/tasks/cli-loc-rsi/rsi.tsv`.",
+        "After loop 5, the advisor runs the holdout on the task branch. The holdout prints `0`.",
+        "After loop 5, the advisor runs the metric on the task branch. If the ledger holds a `keep` row, the metric is lower than the first baseline metric.",
+        "The run report prints one `REVIEW` line for each `keep` row.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "executed: floors measured at the start commit before preflight (vitest --coverage: 2572 passed, uncovered lines 4659-3967=692, uncovered branches 3778-2953=825), filled into the holdout as P0/U0/B0; preflight PASS, holdout 0 at start commit 68fbb68f; /rsi run cli-loc-rsi with 5 loops, baseline 74255 margin 0 (24bd6e98); ledger .agro/tasks/cli-loc-rsi/rsi.tsv has 2 baseline + 5 loop rows, all 7 columns; post-run at 4f73dbc8: git diff --quiet 68fbb68f -- <evaluator-paths> exit 0; git diff --name-only 68fbb68f HEAD lists only cli.ts, commands/harness.ts, commands/langfuse.ts, commands/tool.ts, lib/execution/status.ts (all in scope.txt) and the ledger; holdout rerun 0; metric rerun 73614 < first baseline 74255; report printed RESULT kept 5 of 5 and 5 REVIEW lines; pnpm run typecheck exit 0; 20 of 20 stress suite runs rc=0 with 2572 passed, 0 failed.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/cli/src/cli.ts",
+        ".agro/cli/src/command-table.ts",
+        ".agro/cli/src/commands/auth.ts",
+        ".agro/cli/src/commands/config.ts",
+        ".agro/cli/src/commands/egress.ts",
+        ".agro/cli/src/commands/harness.ts",
+        ".agro/cli/src/commands/langfuse.ts",
+        ".agro/cli/src/commands/lifecycle.ts",
+        ".agro/cli/src/commands/node.ts",
+        ".agro/cli/src/commands/sandbox-list.ts",
+        ".agro/cli/src/commands/sandbox.ts",
+        ".agro/cli/src/commands/secret.ts",
+        ".agro/cli/src/commands/self-upgrade.ts",
+        ".agro/cli/src/commands/tool.ts",
+        ".agro/cli/src/commands/update.ts",
+        ".agro/cli/src/commands/workspace.ts",
+        ".agro/cli/src/controllers/sandbox.ts",
+        ".agro/cli/src/lib/agro-config.ts",
+        ".agro/cli/src/lib/assets.d.ts",
+        ".agro/cli/src/lib/config-render.ts",
+        ".agro/cli/src/lib/console-auth.ts",
+        ".agro/cli/src/lib/docs.ts",
+        ".agro/cli/src/lib/env-file.ts",
+        ".agro/cli/src/lib/env.ts",
+        ".agro/cli/src/lib/execution/detect.ts",
+        ".agro/cli/src/lib/execution/docker-compose-target.ts",
+        ".agro/cli/src/lib/execution/index.ts",
+        ".agro/cli/src/lib/execution/local-target.ts",
+        ".agro/cli/src/lib/execution/openshell-target.ts",
+        ".agro/cli/src/lib/execution/runner.ts",
+        ".agro/cli/src/lib/execution/status.ts",
+        ".agro/cli/src/lib/execution/target.ts",
+        ".agro/cli/src/lib/gitignore.ts",
+        ".agro/cli/src/lib/harnesses/catalog.ts",
+        ".agro/cli/src/lib/host-config.ts",
+        ".agro/cli/src/lib/host-workspace.ts",
+        ".agro/cli/src/lib/install-kind.ts",
+        ".agro/cli/src/lib/layout.ts",
+        ".agro/cli/src/lib/manifest.ts",
+        ".agro/cli/src/lib/product.ts",
+        ".agro/cli/src/lib/project.ts",
+        ".agro/cli/src/lib/prompt.ts",
+        ".agro/cli/src/lib/registry.ts",
+        ".agro/cli/src/lib/remote.ts",
+        ".agro/cli/src/lib/runtimes/catalog.ts",
+        ".agro/cli/src/lib/runtimes/verbs.ts",
+        ".agro/cli/src/lib/secrets.ts",
+        ".agro/cli/src/lib/star-prompt.ts",
+        ".agro/cli/src/lib/tmux.ts",
+        ".agro/cli/src/lib/tools/catalog.ts",
+        ".agro/cli/src/lib/tracing/harness-writers.ts",
+        ".agro/cli/src/lib/tracing/providers/langfuse.ts",
+        ".agro/cli/src/lib/tracing/writer.ts",
+        ".agro/cli/src/lib/vendor.ts",
+        ".agro/cli/src/lib/version.ts",
+        ".agro/cli/src/services/sandbox-upgrade.ts",
+        ".agro/tasks/cli-loc-rsi/rsi.tsv"
+      ],
+      "commit": "4f73dbc8"
+    },
+    {
+      "id": "US-003",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want the run transcript, the size and coverage totals, and the review checks in one file.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/cli-loc/evidence/manual-review.md` holds the US-001 checks, the preflight output, the baseline readings, each loop evaluation, the run report, and the deletion of each worker worktree and branch.",
+        "The evidence file holds the token count and the `wc -l` line count of the scope files at the start commit and at the task branch head.",
+        "The evidence file holds the coverage totals for lines, branches, and functions at the start commit and at the task branch head.",
+        "For each `keep` row, the evidence file holds the result of the review checklist: removed guard or error handling, removed help or user-visible text, and alias or minifier-style change.",
+        "The PR `## Manual review` section lists each `REVIEW` line.",
+        "The operator confirms each `REVIEW` line before the merge. The advisor reverts each kept edit that fails the review, and records the revert in `## Lessons`.",
+        "`bash .agro/skills/git/scripts/manual-review-check.sh <pr-body-file>` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "executed: .agro/tasks/cli-loc/evidence/manual-review.md holds the US-001 checks, the preflight output, the baseline readings, each loop evaluation, the run report, and the deletion of each worker worktree and branch; token count 74255 -> 73614 and wc -l 11568 -> 11403 at start 68fbb68f and head 4f73dbc8; coverage totals for lines, branches, and functions at both commits; review checklist for each of the 5 keep rows; the PR ## Manual review section lists each REVIEW line; the operator confirmed each REVIEW line and the advisor reverted no kept edit; manual-review-check.sh on the PR body for this head: run by the advisor right after this commit, result recorded in the PR Verification section; ste-check exit 0 on the evidence file; pnpm run typecheck exit 0 (post-run).",
+      "dependsOn": [
+        "US-002"
+      ],
+      "files": [
+        ".agro/tasks/cli-loc/evidence/manual-review.md"
+      ],
+      "commit": "d267ab54"
+    }
+  ]
+}
