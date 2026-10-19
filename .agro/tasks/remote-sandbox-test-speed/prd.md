@@ -116,4 +116,8 @@ None.
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. A Claude Code safety check stopped the first preflight. The approved commands began with `rm -f`, and the check cannot read a `bash -c` script. Evidence: the denied preflight call. Outcome: fixed in this PR. Commit `fce2083f` writes each vitest report to a new `mktemp` file, and the command removes no file.
+2. The advisor reads the metric of a worker commit one time in the worker worktree. That single reading becomes the current best. Loop 1 read 738 ms in the worker worktree and 840 and 832 ms in the run checkout. Evidence: the loop 1 evaluation in the evidence file. Outcome: dropped, because a low reading raises the bar for later loops and never keeps a worse edit. Each later gain was more than 50 ms.
+3. Two readings gave a margin of 1 ms after loop 2 and 17 ms after loop 3. Evidence: the `margin` column. Outcome: dropped, because no keep decision changed with the larger margin. Loop 3 gained 54 ms and loop 4 gained 72 ms.
+4. The holdout cannot detect a weaker test or a rare flake. The advisor collected two extra checks for the review. Evidence: 0 failed runs of 40 at `5bb58d95`. With the HUP trap removed, the SIGHUP test failed at `5bb58d95` and at `dd2f763b`. Outcome: dropped, because the checks support the `REVIEW` gate and change no file. The loop 4 worker saw 1 failed run in about 70, and the advisor did not see the failure again.
+5. Loop 1 adds the input `DISCONNECT_WAIT` to `lib.sh`. The input table in `.agro/skills/remote-sandbox/SKILL.md` does not list the input. Outcome: dropped, because `SKILL.md` is outside the plan scope, and the default keeps the 5-second wait on a real VM.
