@@ -135,4 +135,7 @@ The ledger stays at `.agro/tasks/<run-slug>/rsi.tsv`. Each row gains a seventh c
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. The first worker edit removed the last-loop cleanup from Resume. The edit deleted the step "If `<k>` equals `<N>`, go to Report the result". A run that stops after the loop `<N>` commit then lost its cleanup and its report. Evidence: advisor review of `7b4abde9`. Outcome: fixed in this PR, in `6b34746d`.
+2. The advisor helper repeated the zsh word-split defect from #1469. The helper rejected an in-scope edit in loop 1 of run A. Evidence: `.agro/tasks/rsi-v2/evidence/manual-review.md`. Outcome: dropped, because the helper is untracked advisor tooling. The advisor reset the run branch and measured the same commit again under bash.
+3. The drill does not test a nonzero margin. The STE metric is deterministic, and each `margin` value is `0`. Evidence: both ledgers in the evidence file. Outcome: dropped, because a noisy metric is a run of case 4 and out of scope. The PR lists the gap under What remains unverified.
+4. The advisor brief for loop 2 of run B named a paragraph with no findings. The worker edit could not lower the metric, and the loop rejected. Evidence: the loop 2 evaluation in the evidence file. Outcome: dropped, because the paragraph limit was a drill instruction and not part of the skill brief. The reject row tested the `-` margin path.
