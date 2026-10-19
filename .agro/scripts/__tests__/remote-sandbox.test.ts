@@ -77,7 +77,8 @@ function launch(skill: Skill, args: string[], env: Record<string, string> = {}) 
       ...base,
       MATRIX_OUT: skill.out,
       FAKE_STATE: skill.state,
-      POLL_INTERVAL: "0.1",
+      POLL_INTERVAL: "0.02",
+      DISCONNECT_WAIT: "0",
       REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${EXTRA_DIR}:${PARTIAL_DIR}`,
       ...env,
     },
@@ -107,146 +108,148 @@ async function waitFor(predicate: () => boolean, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   while (!predicate()) {
     if (Date.now() > deadline) throw new Error("timed out waiting for condition");
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    await new Promise((resolve) => setTimeout(resolve, 10));
   }
 }
 
-describe("remote-sandbox adapter discovery and contract", () => {
-  it("loads adapters/ from the skill directory and every REMOTE_SANDBOX_ADAPTERS directory", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["nope", "--preflight"]).done;
-    expect(result.code).toBe(2);
-    const usage = result.stderr.split("\n").find((line) => line.startsWith("usage:")) ?? "";
-    expect(usage).toContain("builtin");
-    expect(usage).toContain("fake");
-    expect(usage).toContain("hooked");
-    expect(usage).not.toContain("partial");
+describe.concurrent("remote-sandbox", () => {
+  describe("remote-sandbox adapter discovery and contract", () => {
+    it("loads adapters/ from the skill directory and every REMOTE_SANDBOX_ADAPTERS directory", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["nope", "--preflight"]).done;
+      expect(result.code).toBe(2);
+      const usage = result.stderr.split("\n").find((line) => line.startsWith("usage:")) ?? "";
+      expect(usage).toContain("builtin");
+      expect(usage).toContain("fake");
+      expect(usage).toContain("hooked");
+      expect(usage).not.toContain("partial");
+    });
+
+    it("loads REMOTE_SANDBOX_ADAPTERS after the skill adapters/ directory", async () => {
+      const skill = makeSkill();
+      const own = await launch(skill, ["builtin", "--preflight"]).done;
+      expect(own.code).toBe(0);
+      expect(own.stdout).toContain("builtin-preflight");
+
+      const override = join(skill.temp, "override");
+      mkdirSync(override);
+      writeFileSync(join(override, "builtin.sh"), 'builtin_preflight() { echo "override-preflight"; }\n');
+      const later = await launch(skill, ["builtin", "--preflight"], {
+        REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${override}`,
+      }).done;
+      expect(later.code).toBe(0);
+      expect(later.stdout).toContain("override-preflight");
+      expect(later.stdout).not.toContain("builtin-preflight");
+    });
+
+    it("exits 2 with a usage line when the adapter lacks <p>_list", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["partial", "--preflight"]).done;
+      expect(result.code).toBe(2);
+      expect(result.stderr).toMatch(/^usage: run\.sh /m);
+      expect(result.stdout).not.toContain("preflight ok");
+    });
   });
 
-  it("loads REMOTE_SANDBOX_ADAPTERS after the skill adapters/ directory", async () => {
-    const skill = makeSkill();
-    const own = await launch(skill, ["builtin", "--preflight"]).done;
-    expect(own.code).toBe(0);
-    expect(own.stdout).toContain("builtin-preflight");
+  describe.concurrent("remote-sandbox driver run", { timeout: 30_000 }, () => {
+    it("runs the default check, forwards INSTALL_URL only, prints no driver rows, and cleans up", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["fake"], {
+        INSTALL_URL: "https://example.test/install.sh",
+        AGRO_JS_URL: "https://example.test/agro.js",
+        GET_AGRO_URL: "https://example.test/get-agro.sh",
+      }).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toContain("check=fresh-install.sh");
+      expect(log).toContain("install=https://example.test/install.sh");
+      expect(log).not.toContain("get_agro");
+      expect(log).toContain("CHECK INSTALL_URL=https://example.test/install.sh");
+      expect(log).toContain("CHECK AGRO_JS_URL=https://example.test/agro.js");
+      expect(log).toContain("CHECK SANDBOX_IMAGE=unset");
+      expect(log).toContain("CHECK AGRO_REF=unset");
+      expect(log).toContain("agro_ref=default branch");
+      expect(log).toContain("CHECK GET_AGRO_URL=unset");
+      expect(log).not.toContain("R09-disconnect");
+      expect(log).not.toContain("R10-ssh-inbound");
+      expect(log).not.toContain("R11-https-port");
+      expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
+      expect(destroyedCount(skill)).toBe(1);
+    });
 
-    const override = join(skill.temp, "override");
-    mkdirSync(override);
-    writeFileSync(join(override, "builtin.sh"), 'builtin_preflight() { echo "override-preflight"; }\n');
-    const later = await launch(skill, ["builtin", "--preflight"], {
-      REMOTE_SANDBOX_ADAPTERS: `${FAKE_DIR}:${override}`,
-    }).done;
-    expect(later.code).toBe(0);
-    expect(later.stdout).toContain("override-preflight");
-    expect(later.stdout).not.toContain("builtin-preflight");
-  });
+    it("forwards AGRO_REF and prints it on the build under test line", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["fake"], { AGRO_REF: "feat/example" }).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toContain("agro_ref=feat/example");
+      expect(log).toContain("CHECK AGRO_REF=feat/example");
+    });
 
-  it("exits 2 with a usage line when the adapter lacks <p>_list", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["partial", "--preflight"]).done;
-    expect(result.code).toBe(2);
-    expect(result.stderr).toMatch(/^usage: run\.sh /m);
-    expect(result.stdout).not.toContain("preflight ok");
-  });
-});
+    it("runs the driver rows after checks/agro-rows.sh and skips missing hooks", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["fake", "checks/agro-rows.sh"]).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toContain("check=agro-rows.sh");
+      expect(log).toContain("RESULT R09-disconnect PASS");
+      expect(log).toContain("RESULT R10-ssh-inbound SKIPPED no adapter hook");
+      expect(log).toContain("RESULT R11-https-port SKIPPED no adapter hook");
+      expect(log.indexOf("RESULT R10-ssh-inbound")).toBeLessThan(log.indexOf("remaining "));
+      expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
+      expect(destroyedCount(skill)).toBe(1);
+    });
 
-describe.concurrent("remote-sandbox driver run", { timeout: 30_000 }, () => {
-  it("runs the default check, forwards INSTALL_URL only, prints no driver rows, and cleans up", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["fake"], {
-      INSTALL_URL: "https://example.test/install.sh",
-      AGRO_JS_URL: "https://example.test/agro.js",
-      GET_AGRO_URL: "https://example.test/get-agro.sh",
-    }).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toContain("check=fresh-install.sh");
-    expect(log).toContain("install=https://example.test/install.sh");
-    expect(log).not.toContain("get_agro");
-    expect(log).toContain("CHECK INSTALL_URL=https://example.test/install.sh");
-    expect(log).toContain("CHECK AGRO_JS_URL=https://example.test/agro.js");
-    expect(log).toContain("CHECK SANDBOX_IMAGE=unset");
-    expect(log).toContain("CHECK AGRO_REF=unset");
-    expect(log).toContain("agro_ref=default branch");
-    expect(log).toContain("CHECK GET_AGRO_URL=unset");
-    expect(log).not.toContain("R09-disconnect");
-    expect(log).not.toContain("R10-ssh-inbound");
-    expect(log).not.toContain("R11-https-port");
-    expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
-    expect(destroyedCount(skill)).toBe(1);
-  });
+    it("prints no driver rows after a check other than checks/agro-rows.sh", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["hooked", join(FIXTURES, "checks/env-check.sh")]).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toContain("SUMMARY env-check");
+      expect(log).not.toContain("R09-disconnect");
+      expect(log).not.toContain("R10-ssh-inbound");
+      expect(log).not.toContain("R11-https-port");
+      expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on hooked: 0\nRUN DONE$/);
+    });
 
-  it("forwards AGRO_REF and prints it on the build under test line", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["fake"], { AGRO_REF: "feat/example" }).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toContain("agro_ref=feat/example");
-    expect(log).toContain("CHECK AGRO_REF=feat/example");
-  });
+    it("calls a row hook only when the adapter defines it", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["hooked", "checks/agro-rows.sh"]).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toMatch(/RESULT R10-ssh-inbound PASS hook saw agro-mx-/);
+      expect(log).toContain("RESULT R11-https-port SKIPPED no adapter hook");
+      expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on hooked: 0\nRUN DONE$/);
+    });
 
-  it("runs the driver rows after checks/agro-rows.sh and skips missing hooks", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["fake", "checks/agro-rows.sh"]).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toContain("check=agro-rows.sh");
-    expect(log).toContain("RESULT R09-disconnect PASS");
-    expect(log).toContain("RESULT R10-ssh-inbound SKIPPED no adapter hook");
-    expect(log).toContain("RESULT R11-https-port SKIPPED no adapter hook");
-    expect(log.indexOf("RESULT R10-ssh-inbound")).toBeLessThan(log.indexOf("remaining "));
-    expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
-    expect(destroyedCount(skill)).toBe(1);
-  });
+    it("keeps the VM when KEEP=1", async () => {
+      const skill = makeSkill();
+      const result = await launch(skill, ["fake"], { KEEP: "1" }).done;
+      expect(result.code).toBe(0);
+      const log = readFileSync(logPath(result.stdout), "utf8");
+      expect(log).toContain("== keep agro-mx-");
+      expect(log).not.toContain("RUN DONE");
+      expect(destroyedCount(skill)).toBe(0);
+    });
 
-  it("prints no driver rows after a check other than checks/agro-rows.sh", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["hooked", join(FIXTURES, "checks/env-check.sh")]).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toContain("SUMMARY env-check");
-    expect(log).not.toContain("R09-disconnect");
-    expect(log).not.toContain("R10-ssh-inbound");
-    expect(log).not.toContain("R11-https-port");
-    expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on hooked: 0\nRUN DONE$/);
-  });
+    it("ignores SIGHUP and destroys the VM exactly once on SIGTERM", async () => {
+      const skill = makeSkill();
+      const run = launch(skill, ["fake", join(FIXTURES, "checks/hang.sh")]);
+      await waitFor(() => /^log: /m.test(run.stdout()));
+      const log = logPath(run.stdout());
+      await waitFor(() => existsSync(log) && readFileSync(log, "utf8").includes("CHECK hanging"));
 
-  it("calls a row hook only when the adapter defines it", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["hooked", "checks/agro-rows.sh"]).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toMatch(/RESULT R10-ssh-inbound PASS hook saw agro-mx-/);
-    expect(log).toContain("RESULT R11-https-port SKIPPED no adapter hook");
-    expect(log.trimEnd()).toMatch(/remaining agro-matrix resources on hooked: 0\nRUN DONE$/);
-  });
+      run.child.kill("SIGHUP");
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      expect(run.child.exitCode).toBeNull();
+      expect(run.child.signalCode).toBeNull();
 
-  it("keeps the VM when KEEP=1", async () => {
-    const skill = makeSkill();
-    const result = await launch(skill, ["fake"], { KEEP: "1" }).done;
-    expect(result.code).toBe(0);
-    const log = readFileSync(logPath(result.stdout), "utf8");
-    expect(log).toContain("== keep agro-mx-");
-    expect(log).not.toContain("RUN DONE");
-    expect(destroyedCount(skill)).toBe(0);
-  });
-
-  it("ignores SIGHUP and destroys the VM exactly once on SIGTERM", async () => {
-    const skill = makeSkill();
-    const run = launch(skill, ["fake", join(FIXTURES, "checks/hang.sh")]);
-    await waitFor(() => /^log: /m.test(run.stdout()));
-    const log = logPath(run.stdout());
-    await waitFor(() => existsSync(log) && readFileSync(log, "utf8").includes("CHECK hanging"));
-
-    run.child.kill("SIGHUP");
-    await new Promise((resolve) => setTimeout(resolve, 400));
-    expect(run.child.exitCode).toBeNull();
-    expect(run.child.signalCode).toBeNull();
-
-    run.child.kill("SIGTERM");
-    const result = await run.done;
-    expect(result.code).toBe(130);
-    const text = readFileSync(log, "utf8");
-    expect(text.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
-    expect(destroyedCount(skill)).toBe(1);
+      run.child.kill("SIGTERM");
+      const result = await run.done;
+      expect(result.code).toBe(130);
+      const text = readFileSync(log, "utf8");
+      expect(text.trimEnd()).toMatch(/remaining agro-matrix resources on fake: 0\nRUN DONE$/);
+      expect(destroyedCount(skill)).toBe(1);
+    });
   });
 });

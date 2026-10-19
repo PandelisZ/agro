@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1472-remote-sandbox-test-speed",
+  "description": "rsi run on remote-sandbox test speed: one /rsi version 2 run on the PR path with a timing metric, to test a nonzero noise margin and the REVIEW gate.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Run 4 loops on the remote-sandbox test speed",
+      "description": "As the operator, I want one real `/rsi` run with a timing metric on the PR path so that the run tests a nonzero margin.",
+      "acceptanceCriteria": [
+        "The advisor runs `/rsi` on `task/<N>-remote-sandbox-test-speed` with `--loops 4` and `--slug remote-sandbox-test-speed`, with the scope, metric, holdout, and direction in the Summary.",
+        "`.agro/tasks/remote-sandbox-test-speed/rsi.tsv` holds 2 baseline rows and 4 loop rows. Each row has 7 columns.",
+        "`git diff --quiet <start-commit> -- vitest.config.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts .agro/scripts/__tests__/fixtures/remote-sandbox/` exits 0 on the task branch.",
+        "`git diff --name-only <start-commit> HEAD` lists only the two scope paths and `.agro/tasks/remote-sandbox-test-speed/rsi.tsv`.",
+        "The ledger holds at least one `margin` value greater than `0`.",
+        "After loop 4, the advisor runs the holdout on the task branch. The holdout prints the holdout value of the current best.",
+        "After loop 4, the advisor runs the metric on the task branch. If the ledger holds a `keep` row, the metric is lower than the first baseline metric by more than the baseline noise margin.",
+        "The run report prints one `REVIEW` line for each `keep` row.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Executed on task branch 5bb58d95: ledger 2 baseline + 4 loop rows, all 7 columns; git diff --quiet fce2083f -- <evaluator paths> exit 0; git diff --name-only fce2083f HEAD lists the two scope paths and rsi.tsv; margin values 5, 8, 1, 17, 3 (>0); holdout rerun 0 equals current best 0; metric rerun 143 < 5186 - 5; report printed 4 REVIEW lines; pnpm run typecheck exit 0. Reasoned: /rsi invoked with --loops 4 --slug remote-sandbox-test-speed and the plan inputs (first baseline reason holds the verbatim invocation).",
+      "dependsOn": [],
+      "files": [
+        ".agro/scripts/__tests__/remote-sandbox.test.ts",
+        ".agro/skills/remote-sandbox/scripts/lib.sh",
+        ".agro/tasks/remote-sandbox-test-speed/rsi.tsv"
+      ],
+      "commit": "5bb58d95"
+    },
+    {
+      "id": "US-002",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want the run transcript and the `REVIEW` lines in one file so that I can confirm each kept edit.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/remote-sandbox-test-speed/evidence/manual-review.md` holds the preflight output, the baseline readings, each loop evaluation, the run report, and the deletion of each worker worktree and branch.",
+        "The PR `## Manual review` section lists each `REVIEW` line.",
+        "The operator confirms each `REVIEW` line before the merge. The advisor reverts each kept edit that fails the review, and records the revert in `## Lessons`.",
+        "`bash .agro/skills/git/scripts/manual-review-check.sh <pr-body-file>` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Executed: evidence/manual-review.md holds preflight, baseline, 4 loop evaluations, report, worker worktree and branch deletions, and two review checks (0 of 40 runs failed; SIGHUP test fails with the HUP trap removed at 5bb58d95 and dd2f763b). The operator confirmed all four REVIEW lines (reply: confirm + doc row); no kept edit reverted. PR Manual review lists each REVIEW line; manual-review-check.sh exit 0 (see Close). Typecheck exit 0.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/tasks/remote-sandbox-test-speed/evidence/manual-review.md"
+      ],
+      "commit": "0f7ce805"
+    }
+  ]
+}

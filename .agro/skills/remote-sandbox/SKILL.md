@@ -172,6 +172,7 @@ cat run.out
 | `MATRIX_OUT` | `$PWD/matrix-evidence` | The log directory. Per-run state goes to `$MATRIX_OUT/.state`. |
 | `MATRIX_TAG` | `agro-matrix` | The tag on each VM. `<p>_list` counts the VMs with this tag. |
 | `POLL_INTERVAL` | `15` | Seconds between two polls of the check log. |
+| `DISCONNECT_WAIT` | `5` | Seconds between the start of the `r09` tmux session and the `R09-disconnect` check. |
 | `REMOTE_SANDBOX_ADAPTERS` | empty | A colon-separated list of extra adapter directories. |
 | `VERCEL_SCOPE` | none | The Vercel team slug. The `vercel` adapter needs this variable. |
 | `CONSOLE_SSH_KEY_ID` | none | Optional. The UUID of the console SSH key. Without this variable, `agro node create` registers `~/.ssh/id_ed25519.pub` of the driver host. |
