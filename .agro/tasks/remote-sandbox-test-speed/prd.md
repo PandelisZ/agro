@@ -46,14 +46,14 @@ The run inputs:
 | Input | Value |
 |---|---|
 | Scope | `.agro/scripts/__tests__/remote-sandbox.test.ts .agro/skills/remote-sandbox/scripts/lib.sh` |
-| `--metric` | `rm -f /tmp/rsi-rst-m.json; pnpm exec vitest run .agro/scripts/__tests__/remote-sandbox.test.ts --reporter=json --outputFile=/tmp/rsi-rst-m.json >/dev/null 2>&1 && jq '.testResults[0].endTime - .testResults[0].startTime \| floor' /tmp/rsi-rst-m.json` |
-| `--holdout` | `rm -f /tmp/rsi-rst-h.json; pnpm exec vitest run .agro/scripts/__tests__/remote-sandbox.test.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts --reporter=json --outputFile=/tmp/rsi-rst-h.json >/dev/null 2>&1; jq -e '42 - .numPassedTests' /tmp/rsi-rst-h.json` |
+| `--metric` | `f=$(mktemp) && pnpm exec vitest run .agro/scripts/__tests__/remote-sandbox.test.ts --reporter=json --outputFile=$f >/dev/null 2>&1 && jq '.testResults[0].endTime - .testResults[0].startTime \| floor' $f` |
+| `--holdout` | `f=$(mktemp); pnpm exec vitest run .agro/scripts/__tests__/remote-sandbox.test.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts --reporter=json --outputFile=$f >/dev/null 2>&1; jq -e '42 - .numPassedTests' $f` |
 | `--direction` | `min`. The holdout prints the number of missing passes against 42 expected passes. The baseline holdout is `0`. A failed or deleted test raises the holdout. |
 | `--loops` | `4` |
 | `--slug` | `remote-sandbox-test-speed` |
 | Evaluator paths | `vitest.config.ts .agro/scripts/__tests__/remote-sandbox-adapters.test.ts .agro/scripts/__tests__/fixtures/remote-sandbox/` |
 
-In the table, `\|` is a literal `|` in the command.
+In the table, `\|` is a literal `|` in the command. Each command writes the vitest report to a new `mktemp` file. An empty file makes `jq` fail, so a missing report gives no valid reading.
 
 ## Key Integration Points
 
