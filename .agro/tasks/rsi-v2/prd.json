@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "skill/1470-rsi-v2",
+  "description": "rsi v2: add a --slug run input, measure the noise margin again after each keep, and print a reviewer checklist of kept edits.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add a run slug input",
+      "description": "As an operator, I want to name each `/rsi` run with `--slug <run-slug>`. Two runs can then share one task branch without a shared ledger.",
+      "acceptanceCriteria": [
+        "The `/rsi` inputs table in `.agro/skills/rsi/SKILL.md` lists an optional `--slug <run-slug>` input.",
+        "Without `--slug`, the skill takes the run slug from the run branch name, as version 1 does.",
+        "Preflight stops with `BLOCKED` when the run slug breaks the slug rules in `.agro/skills/prd/SKILL.md` section 2.",
+        "Preflight stops with `BLOCKED` when `.agro/tasks/<run-slug>/rsi.tsv` holds a finished run with `<N>` loop rows.",
+        "The ledger path, the worker branch names, and the commit messages use `<run-slug>`.",
+        "The PR path section states that one task branch can hold several runs, one run at a time, each with its own `--slug`.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/rsi/SKILL.md` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Commits 7b4abde9 and repair 6b34746d (finished-run cleanup and report). Executed: ste-check exit 0, pnpm run typecheck exit 0 on the task branch. Reasoned: --slug row line 47; default from branch slug lines 62-63; Slug and Finished run Preflight rows lines 77-78; ledger, worker branches, commit messages use <run-slug> (0 bare <slug> left); PR path multi-run paragraph line 343.",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/rsi/SKILL.md"
+      ],
+      "commit": "6b34746d"
+    },
+    {
+      "id": "US-002",
+      "title": "Measure the noise margin again after each keep",
+      "description": "As an operator, I want the noise margin measured again at each new best. A margin from a 13.7-second baseline then never judges a 0.4-second metric.",
+      "acceptanceCriteria": [
+        "The ledger table lists a seventh column `margin`.",
+        "The second baseline row holds the baseline noise margin in the `margin` column.",
+        "After the cherry-pick of a `keep` edit, the advisor runs the metric two times in the run checkout. The `margin` column of the `keep` row holds the absolute difference of the two readings.",
+        "A `reject` row holds `-` in the `margin` column.",
+        "The current noise margin is the `margin` of the last `keep` row. With no `keep` row, the current noise margin is the `margin` of the second baseline row.",
+        "Resume stops with `BLOCKED` when the ledger rows hold fewer than seven columns.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/rsi/SKILL.md` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Executed: ste-check exit 0, typecheck exit 0. Reasoned: margin column line 129; baseline margin line 113; two readings after cherry-pick step 4.4.2 lines 238-242; reject holds -; current noise margin lines 149-151; resume BLOCKED under seven columns in Resume step 2.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/skills/rsi/SKILL.md"
+      ],
+      "commit": "b36ac663"
+    },
+    {
+      "id": "US-003",
+      "title": "Print a reviewer checklist",
+      "description": "As a reviewer, I want one line for each kept edit after the result line. Then I can check intent that no holdout measures.",
+      "acceptanceCriteria": [
+        "The worker brief asks the worker for one line that names the behavior that the edit keeps.",
+        "The `reason` of each `keep` row holds the gain, then `; keeps: <worker line>`.",
+        "After the result line, the report prints `REVIEW loop <k> <commit>: <worker line>` for each `keep` row, in loop order.",
+        "The report states that the holdout cannot confirm intent, and that a person confirms each `REVIEW` line before a merge.",
+        "The PR path section puts the `REVIEW` lines in the PR `## Manual review` section.",
+        "`CHANGELOG.md` holds one `### Changed` entry under `## [Unreleased]` for the three `/rsi` changes.",
+        "`wc -l < .agro/skills/rsi/SKILL.md` prints a number less than 500, and `bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/rsi/SKILL.md` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Executed: wc -l 362 (<500), ste-check exit 0, typecheck exit 0. Reasoned: worker line in brief; keep reason ; keeps: line 217; REVIEW line 273 and the statement line 277; PR path step 8 line 340; CHANGELOG ### Changed entry 224 chars.",
+      "dependsOn": [
+        "US-002"
+      ],
+      "files": [
+        ".agro/skills/rsi/SKILL.md",
+        "CHANGELOG.md"
+      ],
+      "commit": "d9c822a3"
+    },
+    {
+      "id": "US-004",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want one real run of each change. Then I can see the slug, the margin column, and the checklist work.",
+      "acceptanceCriteria": [
+        "Two fixture runs share one local branch `rsi/v2-drill` with `--slug v2-drill-a` and `--slug v2-drill-b`, `--loops 2` each. The operator approves the fixture, the metric, and the holdout before the runs.",
+        "Each run writes its own ledger, `.agro/tasks/v2-drill-a/rsi.tsv` and `.agro/tasks/v2-drill-b/rsi.tsv`.",
+        "Each `keep` row holds a number in the `margin` column, and each `reject` row holds `-`.",
+        "Each run report prints one `REVIEW` line for each `keep` row.",
+        "A third invocation with `--slug v2-drill-a` stops with `BLOCKED`, because that run is finished.",
+        "`.agro/tasks/rsi-v2/evidence/manual-review.md` holds the transcript. The transcript shows the deletion of each temporary worktree and branch.",
+        "Typecheck passes"
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Executed: two runs on rsi/v2-drill with --slug v2-drill-a and v2-drill-b, --loops 2 each; separate ledgers; all rows 7 columns; keep rows margin 0, reject row -; REVIEW lines 2 (A) and 1 (B); third invocation --slug v2-drill-a stopped BLOCKED Finished run after report; drill worktrees and branches 0 remaining. Typecheck exit 0. Operator approved the fixture before the runs.",
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003"
+      ],
+      "files": [
+        ".agro/tasks/rsi-v2/evidence/manual-review.md"
+      ],
+      "commit": "2bd37be3"
+    }
+  ]
+}
