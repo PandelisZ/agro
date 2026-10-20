@@ -41,15 +41,16 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed on the task branch at f009a6a3: escalate.sh line 4 reads AGRO_PROJECT_ROOT one time and keeps the four-levels-up fallback; one STATE_DIR default line with ESCALATE_STATE_DIR replaces the if/elif/else block; banner.sh sets cli_bin from AGRO_BIN with the default agro; vitest on the shell-rename-leftovers, escalate, boot-banner, and entrypoint test files exit 0 (4 files, 51 passed); test-escalate-decision.sh exit 0; test-escalate-timeouts.sh exit 0; shellcheck shows the same 4 info findings at head and parent (no new finding); full suite exit 0 (108 files, 2574 passed, 2 skipped); pnpm run typecheck exit 0.",
       "dependsOn": [
         "US-001"
       ],
       "files": [
         ".agro/skills/escalate/scripts/escalate.sh",
         ".agro/install/banner.sh"
-      ]
+      ],
+      "commit": "f009a6a3"
     },
     {
       "id": "US-003",
