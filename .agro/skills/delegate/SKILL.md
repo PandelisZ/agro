@@ -96,18 +96,38 @@ Give each worker the dispatch record, the exclusions, and these rules:
 - Never bypass a hook. A rerun of a blocked command through a script file, a
   heredoc, or another tool is a bypass. Report a blocked action as `BLOCKED`.
 
+## Reviewer brief
+
+Give each reviewer the story criteria, the worker commit SHA, the execution
+directory, and these rules:
+
+- Start in a fresh context. Read the story criteria and the worker commit.
+- Edit no file. Run no command that writes.
+- Label each finding `blocking` or `non-blocking`. A `blocking` finding names
+  the criterion that the commit fails or the defect that the commit adds.
+- Never accept. Report the findings to the advisor.
+
 ## Acceptance
 
 A worker report is not acceptance. For each story, the advisor does these steps:
 
 1. Inspect the worker commit.
-2. Bring the commit onto the task branch.
-3. Rerun the verification on the integrated task branch.
-4. Write `passes: true`, `commit`, and `notes` in `prd.json`. In `notes`,
-   mark each criterion executed or reasoned.
+2. If the story has `review: true`, dispatch one read-only reviewer worker with
+   the reviewer brief. Do this step after the implementer commit and before
+   step 3.
+3. Bring the commit onto the task branch.
+4. Rerun the verification on the integrated task branch.
+5. Write `passes: true`, `commit`, and `notes` in `prd.json`. In `notes`,
+   mark each criterion executed or reasoned. Record each review round and its
+   findings.
 
 If a check fails, the story returns to the same worker with a bounded repair.
 The advisor does not repair. Dependents of a failed story wait.
+
+A `blocking` finding returns the story to the same implementer worker as a
+bounded repair. The advisor allows at most 2 review rounds for each story.
+After 2 rounds, the advisor decides on the open findings or asks the operator.
+The reviewer never accepts. The advisor still runs each verification step.
 
 ## Integration
 
@@ -135,6 +155,9 @@ There is no separate ledger. `prd.json` holds the state.
   record.
 - Never substitute a model silently.
 - A required control that is unavailable blocks the story. Ask the operator.
+- The reviewer uses a model other than the implementer model when one is
+  available. If no other model is available, the reviewer uses the implementer
+  model in a fresh context. Record that fact in `notes`.
 
 Provider defaults live in provider settings. For Claude Code, the default is
 `CLAUDE_CODE_SUBAGENT_MODEL` in the `env` object of `.claude/settings.json`.
