@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-HARNESS="${AGRO_PROJECT_ROOT:-${AGRO_PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}}"
+HARNESS="${AGRO_PROJECT_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../../.." && pwd)}"
 PATHS_SH="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../../../scripts/paths.sh"
 if [ -f "$PATHS_SH" ]; then
   # shellcheck source=../../../scripts/paths.sh
@@ -11,13 +11,7 @@ else
   SLACK_ENV="$HARNESS/.devcontainer/.env"
 fi
 BRIDGE_CONFIG="${ESCALATE_BRIDGE_CONFIG:-$HOME/.pi/msg-bridge.json}"
-if [ -n "${ESCALATE_STATE_DIR:-}" ]; then
-  STATE_DIR="$ESCALATE_STATE_DIR"
-elif [ ! -d "$HOME/.agro/escalate" ] && [ -d "$HOME/.agro/escalate" ]; then
-  STATE_DIR="$HOME/.agro/escalate"
-else
-  STATE_DIR="$HOME/.agro/escalate"
-fi
+STATE_DIR="${ESCALATE_STATE_DIR:-$HOME/.agro/escalate}"
 LOG_FILE="${ESCALATE_LOG:-$HARNESS/.agro/logs/escalations.jsonl}"
 QUIET_HOURS="${ESCALATE_QUIET_HOURS:-12}"
 TIMEOUT="${ESCALATE_TIMEOUT:-10}"

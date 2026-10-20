@@ -18,7 +18,7 @@ _agro_has_binary() {
   esac
 }
 
-cli_bin="${AGRO_BIN:-${AGRO_BIN:-agro}}"
+cli_bin="${AGRO_BIN:-agro}"
 sandbox_name="${SANDBOX_NAME:-$(hostname)}"
 timezone="${TZ:-$(date +%Z 2>/dev/null)}"
 project_dir="${HOME}/harness"
