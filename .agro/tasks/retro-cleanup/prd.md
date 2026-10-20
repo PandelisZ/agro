@@ -111,4 +111,6 @@ None.
 
 ## Lessons
 
-Filled by the advisor before undraft.
+- A third rename leftover was in `.agro/install/banner.sh`. Evidence: `git grep` for the doubled default found `cli_bin="${AGRO_BIN:-${AGRO_BIN:-agro}}"`. Outcome: fixed in this PR. The guard test now covers each tracked shell file.
+- The secret-exposure guard denied a `jq` command because the notes text held the word `env`. The command read no environment. Outcome: dropped, because the advisor wrote the notes to a file and reworded them, and the guard did its job.
+- An `eval` probe of `escalate.sh` printed a wrong `HARNESS` value, because `BASH_SOURCE` is empty under `bash -c`. Outcome: dropped, because the advisor removed the probe from the evidence and the escalate tests cover the resolution.

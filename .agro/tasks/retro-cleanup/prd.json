@@ -63,14 +63,15 @@
         "Typecheck passes"
       ],
       "priority": 3,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed: .agro/tasks/retro-cleanup/evidence/manual-review.md holds the red run of US-001 (2 failed, naming banner.sh:21, escalate.sh:4, escalate.sh:16), the green run after US-002 (4 files, 51 passed), and the full suite (108 files, 2574 passed, 2 skipped); the PR Manual review section gives the commands and the failure path (restored doubled default in banner.sh: 1 failed, exit 1); ste-check exit 0 on the evidence file; manual-review-check.sh on the PR body for this head: run by the advisor right after this commit, result recorded in the PR Verification section.",
       "dependsOn": [
         "US-002"
       ],
       "files": [
         ".agro/tasks/retro-cleanup/evidence/manual-review.md"
-      ]
+      ],
+      "commit": "6bdeffc2"
     }
   ]
 }
