@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "feat/1490-delegate-reviewer-step",
+  "description": "Optional reviewer step for /delegate: an independent read-only reviewer worker checks a story commit before the advisor accepts it.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Optional reviewer step before acceptance",
+      "description": "As an advisor, I want an optional independent reviewer for a story so that a second context checks each change before I accept it.",
+      "acceptanceCriteria": [
+        "`.agro/skills/prd/references/tracker.md` documents an optional story field `review` boolean with the default `false`. The text states that the field does not change `schemaVersion`.",
+        "`.agro/skills/delegate/SKILL.md` § Acceptance states that, if a story has `review: true`, the advisor dispatches one read-only reviewer worker after the implementer commit and before the advisor brings the commit onto the task branch.",
+        "The reviewer brief in `.agro/skills/delegate/SKILL.md` states that the reviewer starts in a fresh context, reads the story criteria and the worker commit, edits no file, and labels each finding `blocking` or `non-blocking`.",
+        "§ Acceptance states that a `blocking` finding returns the story to the same implementer worker as a bounded repair, and that the advisor allows at most 2 review rounds for each story.",
+        "§ Acceptance states that the reviewer never accepts, and that the advisor still runs each verification step.",
+        "§ Model policy states that the reviewer uses a model other than the implementer model when one is available. If no other model is available, the reviewer uses the implementer model in a fresh context, and the advisor records that fact in `notes`.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/delegate/SKILL.md` reports no finding on a line that this story adds.",
+        "`pnpm test` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/delegate/SKILL.md",
+        ".agro/skills/prd/references/tracker.md"
+      ]
+    },
+    {
+      "id": "US-002",
+      "title": "Council owns its budget stop",
+      "description": "As an advisor, I want `/council` to own its budget stop so that `/council` names no missing `/delegate` rule.",
+      "acceptanceCriteria": [
+        "`.agro/skills/council/SKILL.md` § 3 states that, at budget exhaustion, the advisor dispatches no further worker and reports `PARTIAL` with the accepted observations and the missing coverage.",
+        "`.agro/skills/council/references/scenarios.md` § Partial evidence and critic failure names the same council budget stop.",
+        "`git grep -n \"budget-stop\" .agro/skills` returns no line.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/council/SKILL.md .agro/skills/council/references/scenarios.md` reports no finding on a line that this story adds.",
+        "`pnpm test` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/council/SKILL.md",
+        ".agro/skills/council/references/scenarios.md"
+      ]
+    }
+  ]
+}
