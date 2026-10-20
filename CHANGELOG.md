@@ -18,6 +18,9 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 ### Fixed
 - Enable Pi terminal clipboard forwarding by default in newly scaffolded interactive Herdr shells while preserving explicit overrides ([#1476](https://github.com/mifunedev/agro/issues/1476)).
 
+### Fixed
+- Pin Pi Tasks to `0.9.1` to remove its TypeBox dependency warning ([#1474](https://github.com/mifunedev/agro/issues/1474)).
+
 ## [0.24.1] - 2026-10-18
 
 ### Changed
