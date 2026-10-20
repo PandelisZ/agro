@@ -99,4 +99,5 @@ None. The operator accepted the same-model reviewer fallback and the cap of 2 re
 
 ## Lessons
 
-Filled by the advisor before undraft.
+1. Claim: the CC Safety Net hook blocks a `python3` heredoc and a `bash $VAR` script path. Evidence: rule `analysis.unsupported-heredoc` blocked both workers and the advisor; rule `analysis.dynamic-shell-source` blocked the advisor. Each actor used the remedy that the hook names: the Edit tool or a literal path. Outcome: dropped, because the hook already names the remedy.
+2. Claim: `pnpm test` exits 1 in a new task worktree with no `node_modules`. Evidence: the first run printed `vitest: not found`. Outcome: dropped, because `/git` § Worktrees already requires `pnpm install --frozen-lockfile` after `git worktree add`.
