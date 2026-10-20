@@ -30,7 +30,8 @@ If inherited context contains preferred answers, disclose contamination rather t
 One required member fails after another member returns accepted observations.
 Expect `PARTIAL`, named missing coverage, and no final recommendation dependent on that evidence.
 If the required critic fails, apply the same limit. Do not label unaccepted critique complete.
-Expect no automatic replacement. At budget exhaustion, apply `/delegate` budget-stop policy.
+Expect no automatic replacement.
+At budget exhaustion, apply the council budget stop: dispatch no further worker, and report `PARTIAL` with the accepted observations and the missing coverage.
 For a missing required capability or authorization, report `BLOCKED` even if observations exist.
 For an interrupted run, reconcile existing `/delegate` records instead of duplicating dispatch.
 

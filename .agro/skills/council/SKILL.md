@@ -55,7 +55,8 @@ Offer a single-advisor analysis only as a separate, clearly labeled alternative 
 Use [the canonical `/delegate` policy](../delegate/SKILL.md) for bounded read-only research assignments.
 That policy owns native tools, capability checks, models, reasoning effort, settings evidence, ledger records, caps, resume, acceptance, and failure handling.
 Do not copy its dispatch schema or implement another fan-out mechanism.
-At budget exhaustion, apply its budget-stop rule.
+At budget exhaustion, apply the council budget stop: dispatch no further worker, and report `PARTIAL` with the accepted observations and the missing coverage.
+If no accepted observation exists at budget exhaustion, report `BLOCKED`.
 
 Disclose before dispatch that `/delegate` creates or updates local run records under `.agro/tasks/`.
 Those records are council's local side effects; member research has no owned write paths.

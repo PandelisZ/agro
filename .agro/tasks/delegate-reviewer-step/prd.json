@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "feat/1490-delegate-reviewer-step",
+  "description": "Council owns its budget stop: /council defines its own budget stop instead of pointing to a nonexistent /delegate rule.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Council owns its budget stop",
+      "description": "As an advisor, I want `/council` to own its budget stop so that `/council` names no missing `/delegate` rule.",
+      "acceptanceCriteria": [
+        "`.agro/skills/council/SKILL.md` § 3 states that, at budget exhaustion, the advisor dispatches no further worker and reports `PARTIAL` with the accepted observations and the missing coverage.",
+        "`.agro/skills/council/references/scenarios.md` § Partial evidence and critic failure names the same council budget stop.",
+        "`git grep -n \"budget-stop\" .agro/skills` returns no line.",
+        "`bash .agro/skills/ste/scripts/ste-check.sh .agro/skills/council/SKILL.md .agro/skills/council/references/scenarios.md` reports no finding on a line that this story adds.",
+        "`pnpm test` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Worker model: opus (provider default). C1-C2 reasoned: advisor read council/SKILL.md section 3 and scenarios.md; both name the council budget stop with PARTIAL; SKILL.md adds BLOCKED when no observation exists, consistent with section 5. C3 executed: git grep budget-stop .agro/skills exit 1, no lines. C4 executed: ste-check.sh on both files exit 0. C5 executed: pnpm test exit 0. C6 executed: pnpm typecheck exit 0.",
+      "dependsOn": [],
+      "files": [
+        ".agro/skills/council/SKILL.md",
+        ".agro/skills/council/references/scenarios.md"
+      ],
+      "commit": "57d7b44d"
+    }
+  ]
+}
