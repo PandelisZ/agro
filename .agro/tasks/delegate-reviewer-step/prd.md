@@ -91,8 +91,7 @@ The change is procedure prose. The change edits no executable code, so the plan 
 
 ## Open Questions
 
-1. Confirm the reviewer fallback when no other model is available. Does the operator accept a same-model review in a fresh context, or must the story block?
-2. Confirm the cap of 2 review rounds for each story.
+None. The operator accepted the same-model reviewer fallback and the cap of 2 review rounds for each story.
 
 ## Acceptance Criteria
 - [ ] `jq -e 'all(.userStories[]; .passes == true)' .agro/tasks/delegate-reviewer-step/prd.json` exits 0.
