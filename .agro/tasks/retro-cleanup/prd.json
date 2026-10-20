@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "task/1488-retro-cleanup",
+  "description": "retro cleanup: pin the name-required messages of agro harness and agro tool, and remove the shell rename leftovers in escalate.sh and banner.sh behind a guard test.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add the guard tests",
+      "description": "As the operator, I want tests that pin the name-required messages and that reject doubled shell defaults. A later edit then cannot change those messages or bring back a rename leftover unseen.",
+      "acceptanceCriteria": [
+        "`.agro/cli/src/__tests__/harness.test.ts` asserts that `parseHarnessArgs([\"install\"])` returns the error `agro harness install: a harness name is required`.",
+        "`.agro/cli/src/__tests__/tool.test.ts` asserts that `parseToolArgs([\"install\"])` returns the error `agro tool install: a tool name is required`, and that `parseToolArgs([\"uninstall\"])` returns the error `agro tool uninstall: a tool name is required`.",
+        "`.agro/scripts/__tests__/shell-rename-leftovers.test.ts` scans each tracked `.sh` file. The test fails for a parameter expansion of the form `${NAME:-${NAME:-...}}` with the same name twice. The test also fails for a condition of the form `[ ! -d \"X\" ] && [ -d \"X\" ]` with the same path twice.",
+        "Before US-002, `pnpm exec vitest run .agro/scripts/__tests__/shell-rename-leftovers.test.ts` exits 1 and names `.agro/skills/escalate/scripts/escalate.sh` and `.agro/install/banner.sh`.",
+        "`pnpm exec vitest run .agro/cli/src/__tests__/harness.test.ts .agro/cli/src/__tests__/tool.test.ts` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "executed on the task branch at 7398afe2: harness.test.ts asserts 'agro harness install: a harness name is required' (line 165); tool.test.ts asserts 'agro tool install: a tool name is required' (line 172) and 'agro tool uninstall: a tool name is required' (line 1047); shell-rename-leftovers.test.ts scans git ls-files '*.sh' for both patterns; red run before US-002: pnpm exec vitest run .agro/scripts/__tests__/shell-rename-leftovers.test.ts exit 1, 2 failed, naming .agro/install/banner.sh:21, .agro/skills/escalate/scripts/escalate.sh:4, and escalate.sh:16; harness.test.ts and tool.test.ts exit 0 with 193 passed; pnpm run typecheck exit 0.",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/__tests__/harness.test.ts",
+        ".agro/cli/src/__tests__/tool.test.ts",
+        ".agro/scripts/__tests__/shell-rename-leftovers.test.ts"
+      ],
+      "commit": "7398afe2"
+    },
+    {
+      "id": "US-002",
+      "title": "Remove the shell rename leftovers",
+      "description": "As the operator, I want each shell default written one time. The scripts then state the behavior that they run.",
+      "acceptanceCriteria": [
+        "Line 4 of `.agro/skills/escalate/scripts/escalate.sh` reads `AGRO_PROJECT_ROOT` one time and keeps the fallback to the path four levels above the script.",
+        "`escalate.sh` sets `STATE_DIR` to `ESCALATE_STATE_DIR` when that variable is not empty, and to `$HOME/.agro/escalate` otherwise. The `elif` branch is gone.",
+        "`.agro/install/banner.sh` sets `cli_bin` from `AGRO_BIN` with the default `agro`, and reads `AGRO_BIN` one time.",
+        "`pnpm exec vitest run .agro/scripts/__tests__/shell-rename-leftovers.test.ts .agro/scripts/__tests__/escalate-env.test.ts .agro/scripts/__tests__/boot-banner.test.ts .agro/scripts/__tests__/entrypoint.test.ts` exits 0.",
+        "`bash .agro/skills/escalate/scripts/test-escalate-decision.sh` and `bash .agro/skills/escalate/scripts/test-escalate-timeouts.sh` exit 0.",
+        "`shellcheck .agro/skills/escalate/scripts/escalate.sh .agro/install/banner.sh` reports no new finding.",
+        "Typecheck passes"
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "executed on the task branch at f009a6a3: escalate.sh line 4 reads AGRO_PROJECT_ROOT one time and keeps the four-levels-up fallback; one STATE_DIR default line with ESCALATE_STATE_DIR replaces the if/elif/else block; banner.sh sets cli_bin from AGRO_BIN with the default agro; vitest on the shell-rename-leftovers, escalate, boot-banner, and entrypoint test files exit 0 (4 files, 51 passed); test-escalate-decision.sh exit 0; test-escalate-timeouts.sh exit 0; shellcheck shows the same 4 info findings at head and parent (no new finding); full suite exit 0 (108 files, 2574 passed, 2 skipped); pnpm run typecheck exit 0.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/skills/escalate/scripts/escalate.sh",
+        ".agro/install/banner.sh"
+      ],
+      "commit": "f009a6a3"
+    },
+    {
+      "id": "US-003",
+      "title": "Record manual review evidence",
+      "description": "As a reviewer, I want the red and green test runs and the script diffs in one file.",
+      "acceptanceCriteria": [
+        "`.agro/tasks/retro-cleanup/evidence/manual-review.md` holds the red run of US-001, the green run after US-002, and the full test suite result.",
+        "The PR `## Manual review` section gives the commands and one failure path with its observed exit status.",
+        "`bash .agro/skills/git/scripts/manual-review-check.sh <pr-body-file>` exits 0.",
+        "Typecheck passes"
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "executed: .agro/tasks/retro-cleanup/evidence/manual-review.md holds the red run of US-001 (2 failed, naming banner.sh:21, escalate.sh:4, escalate.sh:16), the green run after US-002 (4 files, 51 passed), and the full suite (108 files, 2574 passed, 2 skipped); the PR Manual review section gives the commands and the failure path (restored doubled default in banner.sh: 1 failed, exit 1); ste-check exit 0 on the evidence file; manual-review-check.sh on the PR body for this head: run by the advisor right after this commit, result recorded in the PR Verification section.",
+      "dependsOn": [
+        "US-002"
+      ],
+      "files": [
+        ".agro/tasks/retro-cleanup/evidence/manual-review.md"
+      ],
+      "commit": "6bdeffc2"
+    }
+  ]
+}
