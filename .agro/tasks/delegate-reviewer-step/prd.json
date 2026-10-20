@@ -20,13 +20,14 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Worker model: opus (provider default). No review round: review not set. C1-C6 reasoned: advisor inspected the diff of delegate/SKILL.md (Reviewer brief, Acceptance step 2, repair paragraph with 2-round cap, Model policy bullet) and tracker.md (review field, default false, no schemaVersion change). C7 executed: ste-check.sh on delegate/SKILL.md and tracker.md exit 0. C8 executed: pnpm test exit 0 (108 files, 2574 passed, 2 skipped). C9 executed: pnpm typecheck exit 0. Worker added one sentence beyond the criteria for the case after 2 rounds; advisor kept it.",
       "dependsOn": [],
       "files": [
         ".agro/skills/delegate/SKILL.md",
         ".agro/skills/prd/references/tracker.md"
-      ]
+      ],
+      "commit": "ff1fbd5b"
     },
     {
       "id": "US-002",
@@ -41,13 +42,14 @@
         "Typecheck passes"
       ],
       "priority": 2,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "Worker model: opus (provider default). C1-C2 reasoned: advisor read council/SKILL.md section 3 and scenarios.md; both name the council budget stop with PARTIAL; SKILL.md adds BLOCKED when no observation exists, consistent with section 5. C3 executed: git grep budget-stop .agro/skills exit 1, no lines. C4 executed: ste-check.sh on both files exit 0. C5 executed: pnpm test exit 0. C6 executed: pnpm typecheck exit 0.",
       "dependsOn": [],
       "files": [
         ".agro/skills/council/SKILL.md",
         ".agro/skills/council/references/scenarios.md"
-      ]
+      ],
+      "commit": "57d7b44d"
     }
   ]
 }
