@@ -17,14 +17,15 @@
         "Typecheck passes"
       ],
       "priority": 1,
-      "passes": false,
-      "notes": "",
+      "passes": true,
+      "notes": "executed on the task branch at 7398afe2: harness.test.ts asserts 'agro harness install: a harness name is required' (line 165); tool.test.ts asserts 'agro tool install: a tool name is required' (line 172) and 'agro tool uninstall: a tool name is required' (line 1047); shell-rename-leftovers.test.ts scans git ls-files '*.sh' for both patterns; red run before US-002: pnpm exec vitest run .agro/scripts/__tests__/shell-rename-leftovers.test.ts exit 1, 2 failed, naming .agro/install/banner.sh:21, .agro/skills/escalate/scripts/escalate.sh:4, and escalate.sh:16; harness.test.ts and tool.test.ts exit 0 with 193 passed; pnpm run typecheck exit 0.",
       "dependsOn": [],
       "files": [
         ".agro/cli/src/__tests__/harness.test.ts",
         ".agro/cli/src/__tests__/tool.test.ts",
         ".agro/scripts/__tests__/shell-rename-leftovers.test.ts"
-      ]
+      ],
+      "commit": "7398afe2"
     },
     {
       "id": "US-002",
