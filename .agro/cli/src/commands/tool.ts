@@ -1,6 +1,4 @@
-import { existsSync } from "node:fs";
 import { userInfo } from "node:os";
-import { join } from "node:path";
 import {
   ExecutionSpawnError,
   resolveExecutionTarget,
@@ -10,7 +8,9 @@ import {
 import type { LocalIdentity } from "../lib/execution/local-target.js";
 import { messageOf, spawnRunner, type LifecycleRunner } from "../lib/execution/runner.js";
 import {
+  collectProbes,
   homeOf,
+  hostBinaryUnderPrefix,
   hostPrefix,
   hostTargetFor,
   installedCell,
@@ -18,12 +18,13 @@ import {
   isReachable,
   markSandboxInstall,
   onPath,
-  probeableHost,
   removeInstalled,
   sandboxRefusal,
   unreachableReason,
   writeInstalledNote,
   writeTable,
+  uninstallFromHost,
+  type Collected,
   type RemovalOutcome,
 } from "../lib/execution/status.js";
 import type { ExecutionTarget } from "../lib/execution/target.js";
@@ -33,7 +34,6 @@ import {
   readHostConfig,
   recordHarnessRoot,
   resolveHarnessRoot,
-  isRootToolReceipt,
   writeHostConfig,
   type HostToolReceipt,
 } from "../lib/host-config.js";
@@ -98,11 +98,6 @@ interface ToolRow {
   docs: string;
 }
 
-interface CollectedRows {
-  rows: ToolRow[];
-  hostPrefix?: string;
-}
-
 type ProbeUser = "root" | "sandbox" | undefined;
 
 function targetFor(
@@ -130,10 +125,6 @@ async function sandboxMarkerExists(target: ExecutionTarget, entry: ToolEntry): P
     stdio: "capture",
   });
   return r.exitCode === 0;
-}
-
-function hostBinaryUnderPrefix(entry: ToolEntry, prefix: string): boolean {
-  return existsSync(join(harnessBinPath(prefix), entry.binary));
 }
 
 function platformOf(opts: ToolOptions): NodeJS.Platform {
@@ -208,43 +199,30 @@ function rowOf(
   };
 }
 
-async function collectRows(
+function collectRows(
   root: string,
   run: LifecycleRunner,
   home: string,
   env?: NodeJS.ProcessEnv,
   only?: readonly ToolEntry[],
-): Promise<CollectedRows> {
-  const entries = only ? [...only] : [...TOOL_CATALOG];
-  const target = targetFor(root, run, env);
-
-  if (isReachable(await resolveTargetStatus(target))) {
-    const rows: ToolRow[] = [];
-    for (const entry of entries) {
-      const installed = await probeInstalled(target, entry, "sandbox");
-      const version = installed === true ? await probeVersion(target, entry, "sandbox") : null;
-      rows.push(rowOf(entry, installed, version, installed === null ? "unknown" : "sandbox"));
-    }
-    return { rows };
-  }
-
-  const host = probeableHost(env ?? process.env, home);
-  if (host === undefined) {
-    return { rows: entries.map((entry) => rowOf(entry, null, null, "unknown")) };
-  }
-
-  const hostTarget = hostTargetFor(host.root, host.prefix, run, env ?? process.env);
-  const rows: ToolRow[] = [];
-  for (const entry of entries) {
-    const installed = await probeInstalled(hostTarget, entry, undefined);
-    const version = installed === true ? await probeVersion(hostTarget, entry, undefined) : null;
-    rows.push(rowOf(entry, installed, version, installed === null ? "unknown" : "host"));
-  }
-  return { rows, hostPrefix: host.prefix };
+): Promise<Collected<ToolRow>> {
+  return collectProbes(
+    targetFor(root, run, env),
+    only ?? TOOL_CATALOG,
+    run,
+    home,
+    env,
+    async (target, entry, site) => {
+      const installed = await probeInstalled(target, entry, site.user);
+      const version = installed === true ? await probeVersion(target, entry, site.user) : null;
+      return rowOf(entry, installed, version, installed === null ? "unknown" : site.location);
+    },
+    (entry) => rowOf(entry, null, null, "unknown"),
+  );
 }
 
-function renderTable(collected: CollectedRows, io: ToolIO, bin: string): void {
-  const rows = collected.rows;
+function renderTable(collected: Collected<ToolRow>, io: ToolIO, bin: string): void {
+  const rows = collected.items;
   writeTable(io.stdout, ["TOOL", "KIND", "INSTALLED"], rows.map((r) => [
     r.id,
     r.hostRoot ? `${r.kind} (root)` : r.kind,
@@ -256,9 +234,9 @@ function renderTable(collected: CollectedRows, io: ToolIO, bin: string): void {
   writeInstalledNote(io.stdout, rows, collected.hostPrefix, bin);
 }
 
-function renderDetail(collected: CollectedRows, io: ToolIO, bin: string): void {
+function renderDetail(collected: Collected<ToolRow>, io: ToolIO, bin: string): void {
   renderTable(collected, io, bin);
-  for (const r of collected.rows) {
+  for (const r of collected.items) {
     io.stdout(`\n${r.id} — ${r.title}\n`);
     io.stdout(`  version:    ${r.version ?? "—"}\n`);
     io.stdout(`  installable: ${r.installable ? "yes" : "no"}\n`);
@@ -272,7 +250,7 @@ export async function runToolList(opts: ToolOptions, io: ToolIO): Promise<number
   const root = resolveProjectRoot(opts.cwd);
   const collected = await collectRows(root, run, homeOf(opts), opts.env);
   if (opts.json) {
-    io.stdout(`${JSON.stringify(collected.rows, null, 2)}\n`);
+    io.stdout(`${JSON.stringify(collected.items, null, 2)}\n`);
   } else {
     renderTable(collected, io, opts.bin);
   }
@@ -301,7 +279,7 @@ export async function runToolStatus(
 
   const collected = await collectRows(root, run, homeOf(opts), opts.env, only ? [only] : undefined);
   if (opts.json) {
-    io.stdout(`${JSON.stringify(only ? collected.rows[0] : collected.rows, null, 2)}\n`);
+    io.stdout(`${JSON.stringify(only ? collected.items[0] : collected.items, null, 2)}\n`);
   } else {
     renderDetail(collected, io, opts.bin);
   }
@@ -554,55 +532,6 @@ async function removeTool(
   return removeInstalled(entry, "tool", argv, installed, target, prefix, user, opts, io);
 }
 
-async function uninstallOnHost(
-  entry: ToolEntry,
-  opts: ToolOptions,
-  io: ToolIO,
-  run: LifecycleRunner,
-): Promise<number> {
-  const bin = opts.bin;
-  const env = opts.env ?? process.env;
-  const home = homeOf(opts);
-  const computed = hostPrefix(home);
-
-  let config;
-  let workspace: string;
-  try {
-    config = readHostConfig(env, home);
-    workspace = resolveHarnessRoot(undefined, env, home);
-  } catch (err) {
-    io.stderr(`${bin} tool: ${messageOf(err)}\n`);
-    return 1;
-  }
-
-  const receipt = config.hostTools?.[entry.id];
-  if (receipt === undefined && opts.force !== true) {
-    io.stderr(
-      `${bin} tool: no record of installing ${entry.id} on this host.\n` +
-        `Removing it could delete a tool you installed yourself. ` +
-        `Re-run with \`--force\` to remove it from ${computed}.\n`,
-    );
-    return 1;
-  }
-
-  const prefix = receipt === undefined || isRootToolReceipt(receipt) ? computed : receipt.prefix;
-  const target = hostTargetFor(receipt?.workspaceRoot ?? workspace, prefix, run, env);
-  const outcome = await removeTool(entry, target, prefix, undefined, opts, io, true);
-
-  if (outcome.dropReceipt && receipt !== undefined) {
-    const remaining = { ...(config.hostTools ?? {}) };
-    delete remaining[entry.id];
-    try {
-      writeHostConfig({ ...config, hostTools: remaining }, env, home);
-    } catch (err) {
-      io.stderr(`${bin} tool: could not clear the install record: ${messageOf(err)}\n`);
-      return 1;
-    }
-    io.stdout(`${entry.id}: cleared the host install record\n`);
-  }
-  return outcome.code;
-}
-
 export async function runToolUninstall(
   name: string,
   opts: ToolOptions,
@@ -631,7 +560,9 @@ export async function runToolUninstall(
 
   const target = targetFor(root, run, opts.env);
   if (!isReachable(await resolveTargetStatus(target))) {
-    return await uninstallOnHost(entry, opts, io, run);
+    return await uninstallFromHost("tool", entry, opts, io, run, (hostTarget, prefix) =>
+      removeTool(entry, hostTarget, prefix, undefined, opts, io, true),
+    );
   }
 
   const outcome = await removeTool(entry, target, SANDBOX_HARNESS_PREFIX, "sandbox", opts, io);
