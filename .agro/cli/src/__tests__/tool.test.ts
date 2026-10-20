@@ -169,6 +169,7 @@ describe("agro tool — argument parsing", () => {
     const r = parseToolArgs(["install"]);
     expect(r.ok).toBe(false);
     expect(!r.ok && r.showHelp).toBe(true);
+    expect(!r.ok && r.error).toBe("agro tool install: a tool name is required");
   });
 
   it("parses the flags", () => {
@@ -1043,6 +1044,7 @@ describe("agro tool — host flags and help", () => {
     const r = parseToolArgs(["uninstall"]);
     expect(r.ok).toBe(false);
     expect(!r.ok && r.showHelp).toBe(true);
+    expect(!r.ok && r.error).toBe("agro tool uninstall: a tool name is required");
   });
 
   it("documents the host path, the gate and the Linux limit", () => {

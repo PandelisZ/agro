@@ -162,6 +162,7 @@ describe("parseHarnessArgs", () => {
     const p = parseHarnessArgs(["install"]);
     expect(p.ok).toBe(false);
     expect(!p.ok && p.error).toMatch(/name is required/);
+    expect(!p.ok && p.error).toBe("agro harness install: a harness name is required");
   });
 
   it("parses the uninstall subcommand", () => {
