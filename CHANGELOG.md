@@ -10,7 +10,6 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ### Added
 - Add `/rsi` to run a fixed number of measured improvement loops on one scope, keep only edits that beat the noise margin without a holdout loss, and log each loop in `rsi.tsv` ([#1465](https://github.com/mifunedev/agro/pull/1465)).
-- Add an optional `/delegate` reviewer step that runs one read-only reviewer on a `review: true` story before acceptance and returns blocking findings to the implementer for up to 2 rounds ([#1491](https://github.com/mifunedev/agro/pull/1491)).
 
 ### Changed
 - Give `/rsi` a `--slug <run-slug>` input, measure the noise margin again after each kept edit in a `margin` ledger column, and print a `REVIEW` line for each kept edit ([#1471](https://github.com/mifunedev/agro/pull/1471)).

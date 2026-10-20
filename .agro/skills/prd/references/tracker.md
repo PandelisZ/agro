@@ -31,7 +31,6 @@ If `--issue` is missing, stop and write nothing. Print this message:
       "notes": "",
       "dependsOn": [],
       "files": ["<path the story owns>"],
-      "review": false,
       "commit": "<accepted commit>"
     }
   ]
@@ -41,14 +40,13 @@ If `--issue` is missing, stop and write nothing. Print this message:
 Example: folder `.agro/tasks/install-prereq-detection/`, `--issue 175`, and
 `--prefix task` give `"branchName": "task/175-install-prereq-detection"`.
 
-The story fields `dependsOn`, `files`, `review`, and `commit` are optional:
+The story fields `dependsOn`, `files`, and `commit` are optional:
 
 - `dependsOn`: the IDs of the stories that must pass first. The advisor uses this field to run independent stories in parallel waves.
 - `files`: the paths that the story owns. The advisor uses this field to keep parallel writers apart.
-- `review`: a boolean. The default is `false`. When `review` is `true`, the advisor dispatches one read-only reviewer worker before acceptance. `/delegate` § Acceptance owns the procedure.
 - `commit`: the accepted commit. The advisor writes this field after acceptance.
 
-The optional fields, `review` included, need no `schemaVersion` change. Each tool must accept a story without them.
+The optional fields need no `schemaVersion` change. Each tool must accept a story without them.
 Omit `commit` at conversion time.
 
 ## Field ownership
