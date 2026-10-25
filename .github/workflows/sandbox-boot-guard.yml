@@ -5,11 +5,22 @@ on:
   push:
     branches:
       - development
-      - main
     paths:
       - ".devcontainer/**"
       - ".agro/cli/**"
-      - ".agro/scripts/**"
+      - "!.agro/cli/**/__tests__/**"
+      - "!.agro/cli/**/*.md"
+      - ".agro/scripts/docker-compose.sh"
+      - ".agro/scripts/check-host-port.sh"
+      - ".agro/scripts/paths.sh"
+      - ".agro/scripts/provision-python.sh"
+      - ".agro/scripts/sandbox-healthcheck.sh"
+      - ".agro/scripts/sandbox-boot-smoke.sh"
+      - ".agro/scripts/sandbox-upgrade-smoke.sh"
+      - ".agro/scripts/cli-first-install-smoke.sh"
+      - ".agro/scripts/verify-sandbox-image.sh"
+      - ".agro/scripts/install.sh"
+      - ".agro/scripts/link-providers.sh"
       - ".agro/install/**"
       - "agro.json"
       - ".example.env"
@@ -19,7 +30,19 @@ on:
     paths:
       - ".devcontainer/**"
       - ".agro/cli/**"
-      - ".agro/scripts/**"
+      - "!.agro/cli/**/__tests__/**"
+      - "!.agro/cli/**/*.md"
+      - ".agro/scripts/docker-compose.sh"
+      - ".agro/scripts/check-host-port.sh"
+      - ".agro/scripts/paths.sh"
+      - ".agro/scripts/provision-python.sh"
+      - ".agro/scripts/sandbox-healthcheck.sh"
+      - ".agro/scripts/sandbox-boot-smoke.sh"
+      - ".agro/scripts/sandbox-upgrade-smoke.sh"
+      - ".agro/scripts/cli-first-install-smoke.sh"
+      - ".agro/scripts/verify-sandbox-image.sh"
+      - ".agro/scripts/install.sh"
+      - ".agro/scripts/link-providers.sh"
       - ".agro/install/**"
       - "agro.json"
       - ".example.env"
@@ -40,6 +63,7 @@ jobs:
     # job builds AND boots the devcontainer image, which needs an isolated
     # daemon + a non-root runner. The host-socket model can't.
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -147,6 +171,7 @@ jobs:
   sandbox-upgrade-guard:
     name: Boot a legacy volume against the fresh image
     runs-on: ${{ vars.CI_RUNNER || 'ubuntu-latest' }}
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -165,7 +190,6 @@ jobs:
 
       - name: Upgrade a legacy workspace volume to the freshly built image
         env:
-          LEGACY_IMAGE: ghcr.io/mifunedev/agro:0.9.0
           UPGRADE_SMOKE_PROJECT: agro-upgrade-${{ github.run_id }}
           UPGRADE_SMOKE_TIMEOUT_SECONDS: "1200"
           UPGRADE_SMOKE_INTERVAL_SECONDS: "10"
