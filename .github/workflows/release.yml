@@ -16,13 +16,13 @@ permissions:
 jobs:
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
 
     steps:
       - name: Checkout the event commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ github.sha }}
           submodules: recursive
@@ -69,13 +69,13 @@ jobs:
 
   boot-lint:
     name: Boot Path Lint (shellcheck + hadolint)
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
 
     steps:
       - name: Checkout the event commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ github.sha }}
           submodules: recursive
@@ -99,7 +99,7 @@ jobs:
   reserve:
     name: Reserve SemVer draft
     needs: [validate, boot-lint]
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
     outputs:
@@ -110,7 +110,7 @@ jobs:
 
     steps:
       - name: Checkout the validated event commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ github.sha }}
 
@@ -137,7 +137,7 @@ jobs:
     name: Build, smoke, and publish GHCR image
     needs: reserve
     if: ${{ needs.reserve.outputs.publishedNoop != 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     # `needs` is valid in job concurrency expressions. Atomic reservations give
     # distinct push SHAs distinct versions; only same-SHA retries share this key.
     concurrency:
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: Checkout the reserved commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ needs.reserve.outputs.releaseSha }}
           submodules: recursive
@@ -157,8 +157,8 @@ jobs:
       - name: Ensure Mifune submodule
         run: bash .agro/scripts/link-providers.sh --init
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+      - name: Setup Blacksmith Builder
+        uses: useblacksmith/setup-docker-builder@v1
 
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v4
@@ -253,13 +253,13 @@ jobs:
     name: Finalize GitHub Release
     needs: [reserve, publish-image, publish-cli]
     if: ${{ always() && needs.reserve.outputs.publishedNoop != 'true' && needs.publish-image.result == 'success' && needs.publish-cli.result == 'success' }}
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: write
 
     steps:
       - name: Checkout the published commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ needs.reserve.outputs.releaseSha }}
 

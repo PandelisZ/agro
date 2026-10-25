@@ -30,13 +30,13 @@ on:
 jobs:
   publish-npm:
     name: Publish CLI to npm
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
     permissions:
       contents: read
       id-token: write # provenance attestation
     steps:
       - name: Checkout the requested commit
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           ref: ${{ inputs.ref }}
           submodules: recursive

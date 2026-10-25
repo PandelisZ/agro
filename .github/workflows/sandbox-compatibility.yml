@@ -44,11 +44,11 @@ permissions:
 jobs:
   base-node-pnpm-parity:
     name: Verify exact Node and pnpm parity across Debian bases
-    runs-on: ubuntu-latest
+    runs-on: blacksmith-4vcpu-ubuntu-2404
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: useblacksmith/checkout@v1
         with:
           persist-credentials: false
 
