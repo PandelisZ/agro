@@ -17,14 +17,19 @@ fi
 
 SECRET_NAME='(TOKEN|SECRET|PASSWORD|PASSWD|APIKEY|API_KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIAL|AUTH|BEARER|SESSION|COOKIE|SLACK_[A-Z_]*|OPENAI_[A-Z_]*|ANTHROPIC_[A-Z_]*|GITHUB_TOKEN|GH_TOKEN|AWS_SECRET|AWS_SESSION|GCP_[A-Z_]*|DATABASE_URL|DB_PASSWORD)'
 
-DENY='(^|[^A-Za-z0-9._/-])env[[:space:]]*[|>;&]'
-DENY+='|(^|[^A-Za-z0-9._/-])env[[:space:]]*$'
-DENY+='|\bset[[:space:]]*[|>]'
-DENY+='|\bexport[[:space:]]+-p\b'
+ENV_DUMP='(^|[^A-Za-z0-9._/-])env[[:space:]]*[|>;&]'
+ENV_DUMP+='|(^|[^A-Za-z0-9._/-])env[[:space:]]*$'
+ENV_DUMP+='|\bset[[:space:]]*[|>]'
+ENV_DUMP+='|\bprintenv[[:space:]]*([|;>&]|$)'
+
+SHELL_RUNNER='(^|[[:space:];&|(`/])(sh|bash|zsh|dash|ksh|fish)([[:space:]]+-[^[:space:]]*)*[[:space:]]+-[A-Za-z]*c([[:space:]]|$)'
+SHELL_RUNNER+='|(^|[[:space:];&|(`/])su[[:space:]]([^;&|]*[[:space:]])?-[A-Za-z]*c([[:space:]]|$)'
+SHELL_RUNNER+='|(^|[[:space:];&|(`/])(eval|ssh|xargs|watch|tmux|screen)([[:space:]]|$)'
+
+DENY='\bexport[[:space:]]+-p\b'
 DENY+='|\bdeclare[[:space:]]+-[xp]\b'
 DENY+='|\bcompgen[[:space:]]+-[vxAe]'
 DENY+='|/proc/[^/[:space:]]+/environ'
-DENY+='|\bprintenv[[:space:]]*([|;>&]|$)'
 HIST_WRAPPERS='((builtin|command|exec|eval|sudo|nohup|time|env)[[:space:]]+)*'
 DENY+="|(^|[;&|(\`])[[:space:]]*${HIST_WRAPPERS}history\\b"
 DENY+="|(^|[[:space:]])-[A-Za-z]*c[[:space:]]+[\"']?${HIST_WRAPPERS}history\\b"
@@ -77,7 +82,8 @@ SECRET_PATH+='|\.psql_history\b'
 SECRET_PATH+='|\.python_history\b'
 SECRET_PATH+='|\.node_repl_history\b'
 SECRET_PATH+='|\.wget-hsts\b)'
-READ_CMD='(cat|tac|less|more|bat|head|tail|xxd|od|strings|hexdump|base64|nano|vim|vi|emacs|view|sed|awk|grep|rg|ripgrep|jq|yq|tee|cp|mv|scp|rsync|install|source|\.)'
+READ_WORDS='cat|tac|less|more|bat|head|tail|xxd|od|strings|hexdump|base64|nano|vim|vi|emacs|view|sed|awk|grep|rg|ripgrep|jq|yq|tee|cp|mv|scp|rsync|install|source'
+READ_CMD="(${READ_WORDS}|\\.)"
 SECRET_PATH_DENY="\\b${READ_CMD}\\b[^#|]*${SECRET_PATH}"
 
 ASK='\bprintenv[[:space:]]+[A-Za-z_]'
@@ -178,6 +184,16 @@ path_cmd=$(mask_path_cmd "$cmd") || path_cmd=$cmd
 interp_cmd=$(mask_quoted_separators "$cmd") || interp_cmd=$cmd
 jq_filter_text=$(jq_filters "$literal_cmd") || jq_filter_text=$literal_cmd
 
+dump_cmd=$literal_cmd
+secret_path_cmd=$path_cmd
+if command -v perl >/dev/null 2>&1; then
+  unquoted_cmd=$(perl -pe 's{(\\.)|("(?:[^"\\]|\\.)*")|(\x27[^\x27]*\x27)}{my ($e, $d) = ($1, $2); defined $e ? $e : !defined $d ? "\x27\x27" : index($d, "\$(") >= 0 || index($d, "`") >= 0 ? $d : "\"\""}ge' <<<"$literal_cmd") || unquoted_cmd=$literal_cmd
+  if ! grep -qE -- "$SHELL_RUNNER" <<<"$unquoted_cmd"; then
+    dump_cmd=$unquoted_cmd
+    secret_path_cmd=$(READ_WORDS=$READ_WORDS perl -pe 's{(\\.)|("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27)}{my ($e, $q) = ($1, $2); defined $e || index($q, "\$(") >= 0 || index($q, "`") >= 0 ? $e // $q : $q =~ s/\b(?:$ENV{READ_WORDS})\b/QUOTED_WORD/gir}ge' <<<"$path_cmd") || secret_path_cmd=$path_cmd
+  fi
+fi
+
 emit() {
   jq -n --arg d "$1" --arg r "$2" '{
     hookSpecificOutput: {
@@ -188,7 +204,7 @@ emit() {
   }'
 }
 
-if grep -qEi -- "$DENY" <<<"$literal_cmd"; then
+if grep -qEi -- "$DENY" <<<"$literal_cmd" || grep -qEi -- "$ENV_DUMP" <<<"$dump_cmd"; then
   emit deny 'Secret-exposure guard (deny): command matches a high-risk pattern — bulk env dump (env/set/export -p/declare -x/-p/compgen/printenv/proc environ), shell history, echo/printf of a secret-named variable (TOKEN/SECRET/KEY/PASSWORD/AUTH/CREDENTIAL/BEARER/SLACK_*/OPENAI_*/ANTHROPIC_*/GH_TOKEN/AWS_SECRET), Authorization header with variable interpolation, or a token-printing CLI (gh auth token, agro secret get, gcloud auth print-*-token, aws configure get, kubectl get secret -o yaml/json, docker secret/config inspect). These almost always leak credentials into the transcript and prompt cache. Do NOT retry a variant that bypasses this check. Ask the operator to run the command themselves and paste only the specific non-secret output you need.'
 elif grep -qE -- "$INTERP_ENV_READ" <<<"$interp_cmd"; then
   emit deny 'Secret-exposure guard (deny): inline python, perl, ruby, or node code (-c, -e, -p, --eval) reads the process environment (os.environ, getenv, %ENV, $ENV{...}, ENV, process.env), which can print every environment variable, secrets included. Do NOT retry a variant that reaches the environment another way. If you need an environment value, ask the user to paste only that non-secret value.'
@@ -203,7 +219,7 @@ elif grep -qEi -- "$DOCKER_INSPECT" <<<"$cmd"; then
   fi
 elif grep -qEi -- "$OPERATOR_PATH" <<<"$cmd"; then
   emit deny 'Operator-only path guard (deny): command references .config/ or settings.local.json, which hold operator-managed configuration and are off-limits to agents for both read and write. This is a deliberate policy, not a misconfiguration — do not retry a variant that spells the path differently, resolves it through a variable or symlink, or reaches it from a subshell. If you need a value from it, ask the operator to paste only that value into the chat. If you only need to mention the path in prose (commit message, PR body), pass it via a file (`git commit -F msg.txt`, `gh pr create --body-file body.md`) or a HEREDOC, which this guard strips.'
-elif grep -qEi -- "$SECRET_PATH_DENY" <<<"$path_cmd"; then
+elif grep -qEi -- "$SECRET_PATH_DENY" <<<"$secret_path_cmd"; then
   ALLOWED=0
   mapfile -t env_tokens < <(grep -oEi "[^[:space:]\"']*\\.env[^[:space:]\"']*" <<<"$path_cmd" || true)
   if [ "${#env_tokens[@]}" -gt 0 ]; then
