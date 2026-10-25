@@ -82,7 +82,8 @@ SECRET_PATH+='|\.psql_history\b'
 SECRET_PATH+='|\.python_history\b'
 SECRET_PATH+='|\.node_repl_history\b'
 SECRET_PATH+='|\.wget-hsts\b)'
-READ_CMD='(cat|tac|less|more|bat|head|tail|xxd|od|strings|hexdump|base64|nano|vim|vi|emacs|view|sed|awk|grep|rg|ripgrep|jq|yq|tee|cp|mv|scp|rsync|install|source|\.)'
+READ_WORDS='cat|tac|less|more|bat|head|tail|xxd|od|strings|hexdump|base64|nano|vim|vi|emacs|view|sed|awk|grep|rg|ripgrep|jq|yq|tee|cp|mv|scp|rsync|install|source'
+READ_CMD="(${READ_WORDS}|\\.)"
 SECRET_PATH_DENY="\\b${READ_CMD}\\b[^#|]*${SECRET_PATH}"
 
 ASK='\bprintenv[[:space:]]+[A-Za-z_]'
@@ -184,10 +185,12 @@ interp_cmd=$(mask_quoted_separators "$cmd") || interp_cmd=$cmd
 jq_filter_text=$(jq_filters "$literal_cmd") || jq_filter_text=$literal_cmd
 
 dump_cmd=$literal_cmd
+secret_path_cmd=$path_cmd
 if command -v perl >/dev/null 2>&1; then
   unquoted_cmd=$(perl -pe 's{(\\.)|("(?:[^"\\]|\\.)*")|(\x27[^\x27]*\x27)}{my ($e, $d) = ($1, $2); defined $e ? $e : !defined $d ? "\x27\x27" : index($d, "\$(") >= 0 || index($d, "`") >= 0 ? $d : "\"\""}ge' <<<"$literal_cmd") || unquoted_cmd=$literal_cmd
   if ! grep -qE -- "$SHELL_RUNNER" <<<"$unquoted_cmd"; then
     dump_cmd=$unquoted_cmd
+    secret_path_cmd=$(READ_WORDS=$READ_WORDS perl -pe 's{(\\.)|("(?:[^"\\]|\\.)*"|\x27[^\x27]*\x27)}{my ($e, $q) = ($1, $2); defined $e || index($q, "\$(") >= 0 || index($q, "`") >= 0 ? $e // $q : $q =~ s/\b(?:$ENV{READ_WORDS})\b/QUOTED_WORD/gir}ge' <<<"$path_cmd") || secret_path_cmd=$path_cmd
   fi
 fi
 
@@ -216,7 +219,7 @@ elif grep -qEi -- "$DOCKER_INSPECT" <<<"$cmd"; then
   fi
 elif grep -qEi -- "$OPERATOR_PATH" <<<"$cmd"; then
   emit deny 'Operator-only path guard (deny): command references .config/ or settings.local.json, which hold operator-managed configuration and are off-limits to agents for both read and write. This is a deliberate policy, not a misconfiguration — do not retry a variant that spells the path differently, resolves it through a variable or symlink, or reaches it from a subshell. If you need a value from it, ask the operator to paste only that value into the chat. If you only need to mention the path in prose (commit message, PR body), pass it via a file (`git commit -F msg.txt`, `gh pr create --body-file body.md`) or a HEREDOC, which this guard strips.'
-elif grep -qEi -- "$SECRET_PATH_DENY" <<<"$path_cmd"; then
+elif grep -qEi -- "$SECRET_PATH_DENY" <<<"$secret_path_cmd"; then
   ALLOWED=0
   mapfile -t env_tokens < <(grep -oEi "[^[:space:]\"']*\\.env[^[:space:]\"']*" <<<"$path_cmd" || true)
   if [ "${#env_tokens[@]}" -gt 0 ]; then
