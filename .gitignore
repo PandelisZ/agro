@@ -85,3 +85,6 @@ packages/*/node_modules/
 *.migrated
 
 /egress-allow.txt
+.env
+**/matrix-evidence
+/.agro/prompts/
