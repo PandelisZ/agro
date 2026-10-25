@@ -8,6 +8,8 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+## [0.26.0] - 2026-10-25
+
 ### Added
 - Add the Prime Agent harness: run `agro harness install prime-agent` to install Prime Agent `0.10.0` in the sandbox ([#1500](https://github.com/mifunedev/agro/issues/1500)).
 
