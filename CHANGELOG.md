@@ -8,6 +8,10 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+### Fixed
+
+- Stop the secret-exposure guard from denying commands whose quoted prose or patterns mention env dumps or env files ([#1520](https://github.com/mifunedev/agro/pull/1520)).
+
 ## [0.26.0] - 2026-10-25
 
 ### Added
