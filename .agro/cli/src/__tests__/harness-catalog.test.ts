@@ -345,7 +345,7 @@ describe("prefix token and resolvers", () => {
     ["claude", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "@anthropic-ai/claude-code"]],
     ["codex", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "@openai/codex"]],
     ["pi", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@earendil-works/pi-coding-agent"]],
-    ["roder", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder"]],
+    ["roder", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@latest"]],
     ["opencode", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "opencode-ai"]],
     ["openclaw", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--allow-scripts=openclaw", "openclaw@2026.9.9"]],
     ["grok-build", ["bash", "-lc", expandSandboxHome("curl -fsSL https://x.ai/cli/install.sh | GROK_BIN_DIR=\"$HOME/.local/bin\" bash -s 0.2.39 && rm -f \"$HOME/.local/bin/agent\"")]],

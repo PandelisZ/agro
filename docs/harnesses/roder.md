@@ -14,7 +14,7 @@ Run on the host with a running sandbox, or inside the sandbox:
 agro harness install roder
 ```
 
-In the sandbox, AGRO runs `npm --prefix /home/sandbox/.local install -g --ignore-scripts @roderai/roder` as the `sandbox` user. The package and `~/.local/bin/roder` launcher live in the persistent home volume and survive a container recreate. AGRO does not pin a version. Run the same command again to update to the current npm release.
+In the sandbox, AGRO runs `npm --prefix /home/sandbox/.local install -g --ignore-scripts @roderai/roder@latest` as the `sandbox` user. The package and `~/.local/bin/roder` launcher live in the persistent home volume and survive a container recreate. AGRO follows npm's `latest` dist-tag without pinning a version. Run the same command again to update to the release tagged `latest`.
 
 The package supports Linux x64 and ARM64 with glibc 2.35 or newer and a system CA certificate bundle, plus macOS on Apple Silicon. It requires Node.js 18 or newer; AGRO already requires Node.js 22 or newer. Windows, Intel macOS, and musl-based Linux are unsupported.
 
