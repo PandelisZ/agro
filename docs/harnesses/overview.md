@@ -4,7 +4,7 @@ title: "Harnesses Overview"
 
 # Harnesses Overview
 
-AGRO installs no agent CLI at boot. A harness enters the sandbox only when you run `agro harness install <id>`. **Claude Code**, **Codex**, **Pi**, **OpenCode**, **Hermes**, **OpenClaw**, **Grok Build**, **Muse Code**, **Antigravity CLI**, **fx**, and **Prime Agent** install through that door. The install lands in `~/.local` inside the persistent home volume. The install survives a container recreate, because AGRO bakes no harness into the image. **T3 Code** is on demand: the `/t3` skill (or `npx t3`) fetches the T3 Code package and serves a browser UI on port 3773.
+AGRO installs no agent CLI at boot. A harness enters the sandbox only when you run `agro harness install <id>`. **Claude Code**, **Codex**, **Pi**, **Roder**, **OpenCode**, **Hermes**, **OpenClaw**, **Grok Build**, **Muse Code**, **Antigravity CLI**, **fx**, and **Prime Agent** install through that door. The install lands in `~/.local` inside the persistent home volume. The install survives a container recreate, because AGRO bakes no harness into the image. **T3 Code** is on demand: the `/t3` skill (or `npx t3`) fetches the T3 Code package and serves a browser UI on port 3773.
 
 Inside the sandbox, run `agro tool install herdr`, then run `herdr`, then launch whichever agent you prefer from its panes and switch between them at any time. Herdr is for interactive agents. Named tmux sessions are for AGRO's headless gateway and tunnel infrastructure.
 
@@ -81,6 +81,7 @@ Each catalog entry has a `kind`. `installable` harnesses install through the ver
 | [Claude Code](./claude-code.md) | Anthropic's terminal coding agent | `claude` | `agro harness install claude-code` |
 | [Codex](./codex.md) | OpenAI's CLI coding agent | `codex` | `agro harness install codex` |
 | [OpenCode](./opencode.md) | Terminal coding agent with OpenAI OAuth support | `opencode` | `agro harness install opencode` |
+| [Roder](./roder.md) | Rust coding agent with multiple model providers | `roder` | `agro harness install roder` |
 | [Pi](./pi.md) | Lightweight, customizable agent | `pi` | `agro harness install pi` |
 | [Hermes](./hermes.md) | Nous Research's self-improving terminal agent | `hermes` | `agro harness install hermes` |
 | [OpenClaw](./openclaw.md) | Gateway-first personal agent runtime | `OPENCLAW_STATE_DIR=<target-root>/.openclaw openclaw` | `agro harness install openclaw` |
@@ -98,6 +99,7 @@ Each catalog entry has a `kind`. `installable` harnesses install through the ver
 claude --version
 codex --version
 pi --version
+roder --version
 opencode --version
 hermes --version
 grok --version
@@ -116,6 +118,7 @@ Install a harness with `agro harness install <id>`, then authenticate it. Authen
 - **Claude Code**: run `claude` and follow the OAuth prompt (see [Claude Code](./claude-code.md)).
 - **Codex**: run `codex login` (see [Codex](./codex.md)).
 - **OpenCode**: run `opencode auth login` (see [OpenCode](./opencode.md)).
+- **Roder**: run `roder auth login codex`, then `roder auth status` (see [Roder](./roder.md)).
 - **Pi**: configure provider keys via environment variables (see [Pi](./pi.md)).
 - **Hermes**: run `hermes setup` (see [Hermes](./hermes.md)).
 - **Muse Code**: run `muse login` inside the sandbox, or provide `META_API_KEY` to the launching process (see [Muse Code](./muse-code.md)).

@@ -10,6 +10,7 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ### Added
 - Add `/improve [project]` to run a five-lens council on the harness or a project under `projects/` and return one recommendation for the next most meaningful improvement ([#1523](https://github.com/mifunedev/agro/issues/1523)).
+- Add Roder harness installation and updates through `@roderai/roder` on npm, status, removal, and setup documentation.
 
 ### Fixed
 
