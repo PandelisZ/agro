@@ -6,6 +6,8 @@ import { runHarnessInstall, runHarnessUninstall, type HarnessIO } from "../comma
 import { agroConfigPath, defaultAgroConfig } from "../lib/agro-config.js";
 import type { LifecycleRunner, RunResult } from "../lib/execution/runner.js";
 
+import { findHarness, harnessLaunchCommand, resolveInstallArgv, resolveUninstallArgv, resolveVerifyArgv, SANDBOX_HARNESS_PREFIX } from "../lib/harnesses/catalog.js";
+
 const cleanups: string[] = [];
 afterEach(() => {
   for (const path of cleanups.splice(0)) rmSync(path, { recursive: true, force: true });
@@ -52,6 +54,18 @@ function makeIo(): { io: HarnessIO; out: string[]; err: string[] } {
 }
 
 describe("Roder harness lifecycle", () => {
+  it("installs Roder into the selected prefix without bypassing permissions", () => {
+    const roder = findHarness("roder")!;
+    expect(resolveInstallArgv(roder, "/tmp/roder home/.local")).toEqual([
+      "npm", "--prefix", "/tmp/roder home/.local", "install", "-g", "--ignore-scripts", "@roderai/roder",
+    ]);
+    expect(resolveVerifyArgv(roder, SANDBOX_HARNESS_PREFIX)).toEqual(["roder", "--version"]);
+    expect(resolveUninstallArgv(roder, "/tmp/roder home/.local")).toEqual([
+      "npm", "--prefix", "/tmp/roder home/.local", "uninstall", "-g", "@roderai/roder",
+    ]);
+    expect(harnessLaunchCommand(roder)).toBe("roder");
+  });
+
   it.each([0, 7])("installs as the sandbox user and handles npm exit %i", async (exitCode) => {
     const root = makeRepo();
     const home = emptyStateHome();
