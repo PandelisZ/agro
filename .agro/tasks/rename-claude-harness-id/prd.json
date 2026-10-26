@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "project": "agro",
+  "branchName": "feat/1525-rename-claude-harness-id",
+  "description": "Rename the Claude Code harness id to `claude`. Keep `claude-code` as a deprecated alias until 0.29.0, migrate stored install records, and update scripts, docs, and the quickstart screenshot.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Make `claude` the canonical harness id and keep `claude-code` as a deprecated alias",
+      "description": "As an operator, I want to run `agro harness install claude` so that the harness id matches the `claude` binary.",
+      "acceptanceCriteria": [
+        "`HARNESS_CATALOG` in `.agro/cli/src/lib/harnesses/catalog.ts` holds `id: \"claude\"` and holds no entry with `id: \"claude-code\"`.",
+        "`findHarness(\"claude-code\")` returns the entry with `id: \"claude\"`. `harnessIds()` does not return `claude-code`.",
+        "`agro harness install claude-code`, `agro harness uninstall claude-code`, and `agro harness status claude-code` each write this line to stderr and then act on the `claude` entry: `agro harness: \"claude-code\" is a deprecated alias for \"claude\"; the alias stops working in 0.29.0`.",
+        "`agro harness install claude` writes no deprecation line.",
+        "`agro harness list` and `agro harness list --json` show `claude` and do not show `claude-code`.",
+        "`PLUGIN_PROBES` in `.agro/cli/src/commands/langfuse.ts` holds `harnessId: \"claude\"`.",
+        "The npm package name `@anthropic-ai/claude-code` and `docsPath: \"docs/harnesses/claude-code.md\"` stay unchanged.",
+        "A red test in `harness-catalog.test.ts` fails before the change and passes after the change. The test resolves `claude-code` to the `claude` entry.",
+        "`pnpm run typecheck` exits 0. `pnpm test:scripts` exits 0."
+      ],
+      "priority": 1,
+      "passes": true,
+      "notes": "Executed on integrated task branch: pnpm run typecheck exit 0; pnpm test:scripts exit 0 (110 files, 2747 passed). C1 executed: catalog id \"claude\", no claude-code entry (harness-catalog id lists). C2 executed: new test findHarness(\"claude-code\") === findHarness(\"claude\"), harnessIds excludes claude-code. C3 executed: harness.test.ts asserts exact deprecation line for install/uninstall/status with bin substitution. C4 executed: install claude test has no deprecation text. C5 executed: list and --json tests show claude only; unknown-harness lists claude only. C6 reasoned: langfuse.ts:69 harnessId \"claude\" (diff inspected). C7 reasoned+executed: npm package and docsPath unchanged; docs test maps claude to claude-code.md. C8 executed: worker reported red AssertionError before change, green after. C9 executed: see above.",
+      "dependsOn": [],
+      "files": [
+        ".agro/cli/src/lib/harnesses/catalog.ts",
+        ".agro/cli/src/commands/harness.ts",
+        ".agro/cli/src/commands/langfuse.ts",
+        ".agro/cli/src/__tests__/harness-catalog.test.ts",
+        ".agro/cli/src/__tests__/harness.test.ts",
+        ".agro/cli/src/lib/tracing/__tests__/harness-writers.test.ts"
+      ],
+      "commit": "d31b650abb65edf217a40e661a8da7354b53d4a2"
+    },
+    {
+      "id": "US-002",
+      "title": "Migrate the stored install records from `claude-code` to `claude`",
+      "description": "As an operator with an existing install, I want the CLI to find my old install record so that `status`, `install`, and `uninstall` keep working.",
+      "acceptanceCriteria": [
+        "When `~/.agro/config.json` holds `hostHarnesses[\"claude-code\"]` and holds no `hostHarnesses[\"claude\"]`, `readHostConfig` returns the receipt under `hostHarnesses[\"claude\"]` and returns no `claude-code` key.",
+        "When both keys exist, `readHostConfig` keeps `hostHarnesses[\"claude\"]` and drops `hostHarnesses[\"claude-code\"]`.",
+        "After a host install of `claude`, `~/.agro/config.json` holds `hostHarnesses[\"claude\"]` and holds no `claude-code` key.",
+        "A host `uninstall claude` finds a receipt that the CLI recorded under `claude-code` and does not refuse for a missing record.",
+        "In the sandbox, `install claude` prints `updating Claude Code in the sandbox…` when only `/home/sandbox/.local/share/agro/harnesses/claude-code.installed` exists and the binary is present.",
+        "After a sandbox install of `claude`, `claude.installed` exists and `claude-code.installed` does not exist.",
+        "After a sandbox uninstall of `claude`, neither `claude.installed` nor `claude-code.installed` exists.",
+        "Red tests in `host-config.test.ts` and `harness.test.ts` fail before the change and pass after the change.",
+        "`pnpm run typecheck` exits 0. `pnpm test:scripts` exits 0."
+      ],
+      "priority": 2,
+      "passes": true,
+      "notes": "Integrated by cherry-pick as cd2d3789 (worker 24744fac). pnpm run typecheck exit 0. pnpm test:scripts exit 0 on rerun (110 files, 2756 passed); first run had 1 unrelated timeout in remote-sandbox.test.ts SIGTERM case, which passed on isolated rerun and full rerun. C1 executed: host-config.test \"moves a claude-code receipt to claude\". C2 executed: \"keeps the claude receipt and drops claude-code when both exist\"; \"retires the claude-code key on the next write\". C3 executed: harness.test \"records a host install of claude under claude and retires a claude-code receipt\". C4 executed: \"removes claude on the host from a receipt recorded under claude-code\". C5 executed: \"updates claude when only the claude-code marker exists\". C6 executed: same test asserts claude.installed written and claude-code.installed removed. C7 executed: \"clears both claude markers on a sandbox uninstall\". C8 executed: worker reported 7 failed before change, all pass after. C9 executed: see above.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/cli/src/lib/host-config.ts",
+        ".agro/cli/src/commands/harness.ts",
+        ".agro/cli/src/lib/__tests__/host-config.test.ts",
+        ".agro/cli/src/__tests__/harness.test.ts"
+      ],
+      "commit": "cd2d37897189af27c7338cbf349a3cc15a29e73f"
+    },
+    {
+      "id": "US-003",
+      "title": "Update scripts, checks, documentation, and the changelog to `claude`",
+      "description": "As an operator, I want every printed hint and every document to name `agro harness install claude` so that no surface tells me to type the deprecated id.",
+      "acceptanceCriteria": [
+        "`.agro/install/banner.sh` prints `harness install claude`.",
+        "The first field of the Claude entry in `.agro/scripts/sandbox-upgrade-smoke.sh` is `claude`. The second field stays `claude`, and the third field stays `@anthropic-ai/claude-code`.",
+        "`.agro/skills/remote-sandbox/checks/openshell-journey.sh` and `.agro/skills/remote-sandbox/checks/docker-egress.sh` run `agro harness install claude`.",
+        "`README.md`, `docs/quickstart.md`, `docs/harnesses/claude-code.md`, and `docs/harnesses/overview.md` name `claude` in each `agro harness install`, `agro harness uninstall`, and harness-id table cell.",
+        "`git grep -nE 'harness (install|uninstall|status) claude-code'` returns matches only in `CHANGELOG.md` entries for released versions and in `.agro/tasks/`.",
+        "The test fixtures in `sandbox-boot-smoke.test.ts`, `verify-sandbox-image.test.ts`, and `sandbox-upgrade-smoke.test.ts` use the id `claude`.",
+        "`CHANGELOG.md` `## [Unreleased]` `### Changed` holds this entry: \"Rename the Claude Code harness id from `claude-code` to `claude`. `claude-code` stays a deprecated alias until 0.29.0, which removes that alias.\"",
+        "`pnpm test:scripts` exits 0."
+      ],
+      "priority": 3,
+      "passes": true,
+      "notes": "Executed on integrated task branch: pnpm test:scripts exit 0 (110 files, 2747 passed). C1 executed: grep banner.sh:76 \"harness install claude\". C2 executed: grep sandbox-upgrade-smoke.sh:43 \"claude:claude:@anthropic-ai/claude-code\". C3 reasoned: diff shows both remote-sandbox checks run agro harness install claude. C4 reasoned: diff inspected; README, quickstart (command + alt text), claude-code.md, overview.md name claude. C5 executed: git grep outside .agro/tasks exits 1 (no matches); CHANGELOG has none. C6 reasoned: diff shows three fixtures use claude; suite passes. C7 reasoned: Unreleased ### Changed entry present with #1525 link. C8 executed: see above.",
+      "dependsOn": [
+        "US-001"
+      ],
+      "files": [
+        ".agro/install/banner.sh",
+        ".agro/scripts/sandbox-upgrade-smoke.sh",
+        ".agro/skills/remote-sandbox/checks/openshell-journey.sh",
+        ".agro/skills/remote-sandbox/checks/docker-egress.sh",
+        "README.md",
+        "docs/quickstart.md",
+        "docs/harnesses/claude-code.md",
+        "docs/harnesses/overview.md",
+        "CHANGELOG.md",
+        ".agro/scripts/__tests__/sandbox-boot-smoke.test.ts",
+        ".agro/scripts/__tests__/verify-sandbox-image.test.ts",
+        ".agro/scripts/__tests__/sandbox-upgrade-smoke.test.ts"
+      ],
+      "commit": "2baf288343a74a101f73517d97fc3fbb9681faab"
+    },
+    {
+      "id": "US-004",
+      "title": "Retake the quickstart harness-install screenshot",
+      "description": "As a new operator, I want the quickstart screenshot to show `agro harness install claude` so that the image matches the command on the page.",
+      "acceptanceCriteria": [
+        "The worker asks the operator for approval before the worker creates the capture sandbox.",
+        "The capture follows the method in `.agro/tasks/agro-docs-screenshots/prd.md`: a temporary sandbox, a Herdr pane, and a 1280x720 PNG.",
+        "The capture sandbox runs the CLI built from the task branch. `agro harness install claude` runs in the Herdr pane and prints `claude: installed`.",
+        "`docs/img/quickstart-harness-install.png` shows `agro harness install claude` and the install result line.",
+        "The screenshot shows no real name, email address, token, or public IP address.",
+        "The alt text in `docs/quickstart.md` names `agro harness install claude`.",
+        "The worker deletes the capture sandbox after the capture, and the evidence records the delete command and its exit status."
+      ],
+      "priority": 4,
+      "passes": true,
+      "notes": "Integrated by cherry-pick as 77d29a69 (worker 5339f6a8). pnpm test:scripts exit 0 (110 files, 2756 passed; docs-images included). C1 reasoned: operator approved via AskUserQuestion; local Docker failed (session runs inside agro-sbx-local), free node refused HTTP 403 FREE_TIER_INELIGIBLE, operator then approved one paid n4 node. C2 executed: node sandbox + Herdr pane + agent-browser 1280x720 at scale 1.5 -> 1920x1080 PNG, annotate-screenshot.sh exit 0. C3 executed: branch agro.js copied into node sandbox (sha256 match), harness list showed claude, install printed \"claude: installed\". C4 executed: advisor viewed PNG; shows \"$ agro harness install claude\" and result line. C5 executed: advisor viewed PNG; no name, email, token, or IP; demo git identity. C6 executed: grep docs/quickstart.md:88 alt text names agro harness install claude. C7 executed: agro node delete 490e8ec2-e9dc-45b8-9e13-0d8e024c6de0 --yes exit 0; advisor agro node list shows destroyed; lifetime ~5m29s. Evidence file kept local per .gitignore task policy.",
+      "dependsOn": [
+        "US-001",
+        "US-002",
+        "US-003"
+      ],
+      "files": [
+        "docs/img/quickstart-harness-install.png",
+        "docs/quickstart.md",
+        ".agro/tasks/rename-claude-harness-id/evidence/"
+      ],
+      "commit": "77d29a692bbdfcc5500d8ce7779ecb28190205ad"
+    },
+    {
+      "id": "US-005",
+      "title": "Record the manual review transcript",
+      "description": "As the advisor, I want a command transcript of the rename so that the PR `## Manual review` section shows the observed behavior.",
+      "acceptanceCriteria": [
+        "The worker runs `pnpm run build:harness` on the host, and the command exits 0.",
+        "`.agro/tasks/rename-claude-harness-id/evidence/manual-review.md` embeds the new `docs/img/quickstart-harness-install.png`.",
+        "`.agro/tasks/rename-claude-harness-id/evidence/manual-review.md` holds the command and output of `node .agro/cli/dist/agro.js harness list`.",
+        "The transcript holds the command and output of `node .agro/cli/dist/agro.js harness status claude-code` with the deprecation line on stderr.",
+        "The transcript holds the command and output of `node .agro/cli/dist/agro.js harness install nope`. The output lists `claude` and does not list `claude-code`.",
+        "The transcript holds the output of `bash .agro/install/banner.sh` or states the reason that the banner did not run.",
+        "The worker creates no live resource and runs no install against a sandbox without operator approval."
+      ],
+      "priority": 5,
+      "passes": true,
+      "notes": "Advisor-run evidence (no tracked change; evidence/ is local per .gitignore). C1 executed: pnpm run build:harness exit 0. C2 reasoned: manual-review.md embeds docs/img/quickstart-harness-install.png. C3 executed: harness list exit 0, shows claude, no claude-code. C4 executed: harness status claude-code exit 0 with deprecation line. C5 executed: harness install nope exit 1, lists claude not claude-code. C6 executed: banner did not run (renders sandbox login state); grep banner.sh:76 exit 0 recorded with reason. C7 executed: no live resource created for US-005; no sandbox install run.",
+      "dependsOn": [
+        "US-004"
+      ],
+      "files": [
+        ".agro/tasks/rename-claude-harness-id/evidence/manual-review.md"
+      ],
+      "commit": "15aa36bf092a4f5326daeed6b0c02258013e47f5"
+    }
+  ],
+  "pr": 1526,
+  "review": {
+    "commit": "5a381f7e9d6481b62bf01793b14f9108189195c2",
+    "verdict": "pass",
+    "model": "sonnet"
+  }
+}
