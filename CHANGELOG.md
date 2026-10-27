@@ -8,6 +8,8 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-10-26
+
 ### Added
 - Add `/improve [project]` to run a five-lens council on the harness or a project under `projects/` and return one recommendation for the next most meaningful improvement ([#1523](https://github.com/mifunedev/agro/issues/1523)).
 - Add Roder harness installation and updates through `@roderai/roder` on npm, status, removal, and setup documentation ([#1528](https://github.com/mifunedev/agro/pull/1528)).
@@ -15,9 +17,11 @@ Update policy and release automation live in [`/git`](.claude/skills/git/SKILL.m
 
 ### Changed
 - Rename the Claude Code harness id from `claude-code` to `claude`. `claude-code` stays a deprecated alias until 0.29.0, which removes that alias ([#1525](https://github.com/mifunedev/agro/issues/1525)).
+- Make `grok`, `antigravity`, and `muse` the canonical harness ids. `grok-build`, `agy`, `antigravity-cli`, and `muse-code` stay supported names and print no warning ([#1529](https://github.com/mifunedev/agro/issues/1529)).
 
 ### Fixed
 
+- Pin the microsandbox installer to an immutable upstream commit so `agro tool install microsandbox` passes its checksum again ([#1532](https://github.com/mifunedev/agro/issues/1532)).
 - Stop the secret-exposure guard from denying commands whose quoted prose or patterns mention env dumps or env files ([#1520](https://github.com/mifunedev/agro/pull/1520)).
 - Make the `docker-engine` and `desktop` host installs wait for the dpkg lock and retry `apt-get update` instead of failing while another apt process runs ([#1521](https://github.com/mifunedev/agro/issues/1521)).
 

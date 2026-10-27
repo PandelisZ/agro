@@ -143,7 +143,7 @@ export const HARNESS_CATALOG: readonly HarnessEntry[] = [
     kind: "installable",
   },
   {
-    id: "grok-build",
+    id: "grok",
     title: "Grok Build",
     binary: "grok",
     installArgv: [
@@ -173,7 +173,7 @@ export const HARNESS_CATALOG: readonly HarnessEntry[] = [
     kind: "installable",
   },
   {
-    id: "muse-code",
+    id: "muse",
     title: "Muse Code",
     binary: "muse",
     installArgv: [
@@ -188,7 +188,7 @@ export const HARNESS_CATALOG: readonly HarnessEntry[] = [
     kind: "installable",
   },
   {
-    id: "antigravity-cli",
+    id: "antigravity",
     title: "Antigravity CLI",
     binary: "agy",
     installArgv: [
@@ -246,14 +246,21 @@ export const HARNESS_CATALOG: readonly HarnessEntry[] = [
   },
 ];
 
-export const DEPRECATED_HARNESS_ALIASES: Readonly<Record<string, string>> = {
-  "claude-code": "claude",
+export interface HarnessAlias {
+  readonly canonical: string;
+  readonly removedIn?: string;
+}
+
+export const HARNESS_ALIASES: Readonly<Record<string, HarnessAlias>> = {
+  "claude-code": { canonical: "claude", removedIn: "0.29.0" },
+  "grok-build": { canonical: "grok" },
+  agy: { canonical: "antigravity" },
+  "antigravity-cli": { canonical: "antigravity" },
+  "muse-code": { canonical: "muse" },
 };
 
-export const HARNESS_ALIAS_REMOVAL_VERSION = "0.29.0";
-
 export function findHarness(id: string): HarnessEntry | undefined {
-  const canonical = Object.hasOwn(DEPRECATED_HARNESS_ALIASES, id) ? DEPRECATED_HARNESS_ALIASES[id] : id;
+  const canonical = Object.hasOwn(HARNESS_ALIASES, id) ? HARNESS_ALIASES[id].canonical : id;
   return HARNESS_CATALOG.find((h) => h.id === canonical);
 }
 
