@@ -81,8 +81,8 @@ Each catalog entry has a `kind`. `installable` harnesses install through the ver
 | [Claude Code](./claude-code.md) | Anthropic's terminal coding agent | `claude` | `agro harness install claude` |
 | [Codex](./codex.md) | OpenAI's CLI coding agent | `codex` | `agro harness install codex` |
 | [OpenCode](./opencode.md) | Terminal coding agent with OpenAI OAuth support | `opencode` | `agro harness install opencode` |
-| [Roder](./roder.md) | Rust coding agent with multiple model providers | `roder` | `agro harness install roder` |
 | [Pi](./pi.md) | Lightweight, customizable agent | `pi` | `agro harness install pi` |
+| [Roder](./roder.md) | Rust coding agent with multiple model providers | `roder` | `agro harness install roder` |
 | [Hermes](./hermes.md) | Nous Research's self-improving terminal agent | `hermes` | `agro harness install hermes` |
 | [OpenClaw](./openclaw.md) | Gateway-first personal agent runtime | `OPENCLAW_STATE_DIR=<target-root>/.openclaw openclaw` | `agro harness install openclaw` |
 | [Grok Build](./grok-build.md) | xAI's terminal coding agent | `grok` | `agro harness install grok` |
@@ -118,8 +118,8 @@ Install a harness with `agro harness install <id>`, then authenticate it. Authen
 - **Claude Code**: run `claude` and follow the OAuth prompt (see [Claude Code](./claude-code.md)).
 - **Codex**: run `codex login` (see [Codex](./codex.md)).
 - **OpenCode**: run `opencode auth login` (see [OpenCode](./opencode.md)).
-- **Roder**: run `roder auth login codex`, then `roder auth status` (see [Roder](./roder.md)).
 - **Pi**: configure provider keys via environment variables (see [Pi](./pi.md)).
+- **Roder**: run `roder auth login codex`, then `roder auth status` (see [Roder](./roder.md)).
 - **Hermes**: run `hermes setup` (see [Hermes](./hermes.md)).
 - **Muse Code**: run `muse login` inside the sandbox, or provide `META_API_KEY` to the launching process (see [Muse Code](./muse-code.md)).
 - **Grok Build**: run `grok login --device-auth` for headless/remote auth, `grok login` for interactive OAuth, or set `XAI_API_KEY` as a fallback (see [Grok Build](./grok-build.md)). Cached `~/.grok/auth.json` takes precedence over `XAI_API_KEY`.

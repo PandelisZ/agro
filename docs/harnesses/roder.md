@@ -14,9 +14,9 @@ Run on the host with a running sandbox, or inside the sandbox:
 agro harness install roder
 ```
 
-In the sandbox, AGRO runs `npm --prefix /home/sandbox/.local install -g --ignore-scripts @roderai/roder@latest` as the `sandbox` user. The package and `~/.local/bin/roder` launcher live in the persistent home volume and survive a container recreate. AGRO follows npm's `latest` dist-tag without pinning a version. Run the same command again to update to the release tagged `latest`.
+In the sandbox, AGRO runs `npm --prefix /home/sandbox/.local install -g --ignore-scripts @roderai/roder@0.3.26` as the `sandbox` user. The package and `~/.local/bin/roder` launcher live in the persistent home volume and survive a container recreate. AGRO pins a tested Roder version. Run the same command again to reinstall that pinned version. A maintainer pull request bumps the pin to a newer release.
 
-The package supports Linux x64 and ARM64 with glibc 2.35 or newer and a system CA certificate bundle, plus macOS on Apple Silicon. It requires Node.js 18 or newer; AGRO already requires Node.js 22 or newer. Windows, Intel macOS, and musl-based Linux are unsupported.
+The bundled binaries support linux-x64, linux-arm64, and darwin-arm64, and need glibc 2.35 or newer. The package requires Node.js 18 or newer; AGRO already requires Node.js 22 or newer.
 
 Verify the installation inside the sandbox:
 
@@ -55,7 +55,7 @@ In the pane, move to the project checkout and run:
 roder
 ```
 
-AGRO's launch hint is `roder`. To explicitly select Roder's bypass policy for a session, run `roder --mode bypass`. This mode bypasses Roder permission prompts; choose it only when that behavior is intended.
+AGRO shows `roder` as the launch hint. Run `roder --mode bypass` to explicitly select Roder's bypass policy for a session. The bypass mode skips Roder permission prompts. Reserve the bypass mode for a session that runs without permission prompts.
 
 For a non-TTY task using the same configuration and authentication:
 

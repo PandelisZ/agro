@@ -338,6 +338,20 @@ describe("harness catalog", () => {
     expect(versionPins(findHarness("openclaw")!.installArgv)).toEqual(["2026.9.9"]);
   });
 
+  it("registers Roder as a pinned npm harness with an unpinned uninstall", () => {
+    expect(findHarness("roder")).toMatchObject({
+      title: "Roder", binary: "roder", kind: "installable",
+      installUser: "sandbox", verifyArgv: ["roder", "--version"],
+      installArgv: [
+        "npm", "--prefix", HARNESS_PREFIX_TOKEN, "install", "-g",
+        "--ignore-scripts", "@roderai/roder@0.3.26",
+      ],
+      uninstallArgv: ["npm", "--prefix", HARNESS_PREFIX_TOKEN, "uninstall", "-g", "@roderai/roder"],
+      docsPath: "docs/harnesses/roder.md",
+    });
+    expect(versionPins(findHarness("roder")!.installArgv)).toEqual(["0.3.26"]);
+  });
+
   it("registers Muse with a home-local native installer and version verification", () => {
     const muse = findHarness("muse")!;
     expect(muse).toMatchObject({
@@ -363,7 +377,7 @@ describe("prefix token and resolvers", () => {
     ["claude", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "@anthropic-ai/claude-code"]],
     ["codex", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "@openai/codex"]],
     ["pi", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@earendil-works/pi-coding-agent"]],
-    ["roder", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@latest"]],
+    ["roder", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@0.3.26"]],
     ["opencode", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "opencode-ai"]],
     ["openclaw", ["npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--allow-scripts=openclaw", "openclaw@2026.9.9"]],
     ["grok", ["bash", "-lc", expandSandboxHome("curl -fsSL https://x.ai/cli/install.sh | GROK_BIN_DIR=\"$HOME/.local/bin\" bash -s 0.2.39 && rm -f \"$HOME/.local/bin/agent\"")]],

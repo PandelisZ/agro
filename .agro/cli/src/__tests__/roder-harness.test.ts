@@ -57,7 +57,7 @@ describe("Roder harness lifecycle", () => {
   it("installs Roder into the selected prefix without bypassing permissions", () => {
     const roder = findHarness("roder")!;
     expect(resolveInstallArgv(roder, "/tmp/roder home/.local")).toEqual([
-      "npm", "--prefix", "/tmp/roder home/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@latest",
+      "npm", "--prefix", "/tmp/roder home/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@0.3.26",
     ]);
     expect(resolveVerifyArgv(roder, SANDBOX_HARNESS_PREFIX)).toEqual(["roder", "--version"]);
     expect(resolveUninstallArgv(roder, "/tmp/roder home/.local")).toEqual([
@@ -90,7 +90,7 @@ describe("Roder harness lifecycle", () => {
     expect(probe.args.slice(-2)).toEqual(["roder", "--version"]);
     expect(probe.args).toContain("sandbox");
     expect(install.args.slice(-7)).toEqual([
-      "npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@latest",
+      "npm", "--prefix", "/home/sandbox/.local", "install", "-g", "--ignore-scripts", "@roderai/roder@0.3.26",
     ]);
     const markerWrites = execCalls(calls).filter((call) => call.args.includes('mkdir -p "$(dirname "$1")" && : > "$1"'));
     if (exitCode === 0) {

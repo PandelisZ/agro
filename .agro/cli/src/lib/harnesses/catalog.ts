@@ -97,7 +97,7 @@ export const HARNESS_CATALOG: readonly HarnessEntry[] = [
       "install",
       "-g",
       "--ignore-scripts",
-      "@roderai/roder@latest",
+      "@roderai/roder@0.3.26",
     ],
     installUser: "sandbox",
     verifyArgv: ["roder", "--version"],
